@@ -1,6 +1,8 @@
 package gocsv
 
-import "time"
+import (
+	"time"
+	"strconv")
 
 type Sample struct {
 	Foo  string  `csv:"foo"`
@@ -100,11 +102,33 @@ type InnerStruct struct {
 	StringField2     string `csv:"stringField2"`
 }
 
-var _ TypeUnmarshalCSVWithFields = (*UnmarshalCSVWithFieldsSample)(nil)
-
 type UnmarshalCSVWithFieldsSample struct {
 	Foo  string  `csv:"foo"`
 	Bar  int     `csv:"bar"`
 	Baz  string  `csv:"baz"`
 	Frop float64 `csv:"frop"`
 }
+
+func (u *UnmarshalCSVWithFieldsSample) UnmarshalCSVWithFields(key, value string) error {
+	switch key {
+	case "foo":
+		u.Foo = value
+	case "bar":
+		i, err := strconv.Atoi(value)
+		if err != nil {
+			return err
+		}
+		u.Bar = i
+	case "baz":
+		u.Baz = value
+	case "frop":
+		f, err := strconv.ParseFloat(value, 64)
+		if err != nil {
+			return err
+		}
+		u.Frop = f * 100
+	}
+	return nil
+}
+
+var _ TypeUnmarshalCSVWithFields = (*UnmarshalCSVWithFieldsSample)(nil)
