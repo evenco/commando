@@ -14,7 +14,6 @@ import (
 	"os"
 	"reflect"
 	"strings"
-	"sync"
 )
 
 // FailIfUnmatchedStructTags indicates whether it is considered an error when there is an unmatched
@@ -35,26 +34,7 @@ var TagName = "csv"
 // TagSeparator defines seperator string for multiple csv tags in struct fields
 var TagSeparator = ","
 
-// Normalizer is a function that takes and returns a string. It is applied to
-// struct and header field values before they are compared. It can be used to alter
-// names for comparison. For instance, you could allow case insensitive matching
-// or convert '-' to '_'.
-type Normalizer func(string) string
-
 type ErrorHandler func(*csv.ParseError) bool
-
-// normalizeName function initially set to a nop Normalizer.
-var normalizeName = DefaultNameNormalizer()
-
-// DefaultNameNormalizer is a nop Normalizer.
-func DefaultNameNormalizer() Normalizer { return func(s string) string { return s } }
-
-// SetHeaderNormalizer sets the normalizer used to normalize struct and header field names.
-func SetHeaderNormalizer(f Normalizer) {
-	normalizeName = f
-	// Need to clear the cache hen the header normalizer changes.
-	structInfoCache = sync.Map{}
-}
 
 // --------------------------------------------------------------------------
 // CSVWriter used to format CSV

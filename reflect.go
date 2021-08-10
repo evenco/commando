@@ -98,7 +98,7 @@ func getFieldInfos(rType reflect.Type, parentIndexChain []int) []fieldInfo {
 			} else if strings.HasPrefix(fieldTagEntry, "default=") {
 				fieldInfo.defaultValue = strings.TrimPrefix(fieldTagEntry, "default=")
 			} else {
-				filteredTags = append(filteredTags, normalizeName(fieldTagEntry))
+				filteredTags = append(filteredTags, fieldTagEntry)
 			}
 		}
 
@@ -107,7 +107,7 @@ func getFieldInfos(rType reflect.Type, parentIndexChain []int) []fieldInfo {
 		} else if len(filteredTags) > 0 && filteredTags[0] != "" {
 			fieldInfo.keys = filteredTags
 		} else {
-			fieldInfo.keys = []string{normalizeName(field.Name)}
+			fieldInfo.keys = []string{field.Name}
 		}
 		fieldsList = append(fieldsList, fieldInfo)
 	}
