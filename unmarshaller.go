@@ -48,11 +48,8 @@ func NewUnmarshaller(reader *csv.Reader, out interface{}) (*Unmarshaller, error)
 // Read returns an interface{} whose runtime type is the same as the struct that
 // was used to create the Unmarshaller.
 func (um *Unmarshaller) Read() (interface{}, error) {
-	row, err := um.reader.Read()
-	if err != nil {
-		return nil, err
-	}
-	return um.unmarshalRow(row, nil)
+	value, _, err := um.ReadUnmatched()
+	return value, err
 }
 
 // ReadUnmatched is same as Read(), but returns a map of the columns that didn't match a field in the struct
@@ -61,9 +58,7 @@ func (um *Unmarshaller) ReadUnmatched() (interface{}, map[string]string, error) 
 	if err != nil {
 		return nil, nil, err
 	}
-	unmatched := make(map[string]string)
-	value, err := um.unmarshalRow(row, unmatched)
-	return value, unmatched, err
+	return um.unmarshalRow(row)
 }
 
 // validate ensures that a struct was used to create the Unmarshaller, and validates
@@ -114,7 +109,9 @@ func validate(um *Unmarshaller, s interface{}, headers []string) error {
 
 // unmarshalRow converts a CSV row to a struct, based on CSV struct tags.
 // If unmatched is non nil, it is populated with any columns that don't map to a struct field
-func (um *Unmarshaller) unmarshalRow(row []string, unmatched map[string]string) (interface{}, error) {
+func (um *Unmarshaller) unmarshalRow(row []string) (interface{}, map[string]string, error) {
+	unmatched := make(map[string]string)
+
 	isPointer := false
 	concreteOutType := um.outType
 	if um.outType.Kind() == reflect.Ptr {
@@ -126,11 +123,9 @@ func (um *Unmarshaller) unmarshalRow(row []string, unmatched map[string]string) 
 		if j < len(um.fieldInfoMap) && um.fieldInfoMap[j] != nil {
 			fieldInfo := um.fieldInfoMap[j]
 			if err := setInnerField(&outValue, isPointer, fieldInfo.IndexChain, csvColumnContent, fieldInfo.omitEmpty); err != nil { // Set field of struct
-				return nil, fmt.Errorf("cannot assign field at %v to %s through index chain %v: %v", j, outValue.Type(), fieldInfo.IndexChain, err)
+				return nil, nil, fmt.Errorf("cannot assign field at %v to %s through index chain %v: %v", j, outValue.Type(), fieldInfo.IndexChain, err)
 			}
-		} else if unmatched != nil {
-			unmatched[um.Headers[j]] = csvColumnContent
 		}
 	}
-	return outValue.Interface(), nil
+	return outValue.Interface(), unmatched, nil
 }
