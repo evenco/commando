@@ -13,6 +13,20 @@ type Unmarshaller struct {
 	fieldInfoMap           []*fieldInfo
 	MismatchedHeaders      []string
 	MismatchedStructFields []string
+
+	// FailIfUnmatchedStructTags indicates whether it is considered an
+	// error when there is an unmatched struct tag.
+	FailIfUnmatchedStructTags bool
+
+	// FailIfDoubleHeaderNames indicates whether it is considered an
+	// error when a header name is repeated in the csv header.
+	FailIfDoubleHeaderNames bool
+
+	// ShouldAlignDuplicateHeadersWithStructFieldOrder indicates
+	// whether we should align duplicate CSV headers per their
+	// alignment in the struct definition.
+	ShouldAlignDuplicateHeadersWithStructFieldOrder bool
+
 	outType                reflect.Type
 }
 
@@ -72,14 +86,20 @@ func validate(um *Unmarshaller, s interface{}, headers []string) error {
 		curHeaderCount := headerCount[csvColumnHeader]
 		if fieldInfo := getCSVFieldPosition(csvColumnHeader, structInfo, curHeaderCount); fieldInfo != nil {
 			csvHeadersLabels[i] = fieldInfo
-			if ShouldAlignDuplicateHeadersWithStructFieldOrder {
+			if um.ShouldAlignDuplicateHeadersWithStructFieldOrder {
 				curHeaderCount++
 				headerCount[csvColumnHeader] = curHeaderCount
 			}
 		}
 	}
 
-	if FailIfDoubleHeaderNames {
+	if um.FailIfUnmatchedStructTags {
+		if err := maybeMissingStructFields(structInfo.Fields, headers); err != nil {
+			return err
+		}
+	}
+
+	if um.FailIfDoubleHeaderNames {
 		if err := maybeDoubleHeaderNames(headers); err != nil {
 			return err
 		}
