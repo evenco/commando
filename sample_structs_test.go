@@ -70,11 +70,6 @@ type MultiTagSample struct {
 	Bar int    `csv:"BAR"`
 }
 
-type TagSeparatorSample struct {
-	Foo string `csv:"Baz|foo"`
-	Bar int    `csv:"BAR"`
-}
-
 type CustomTagSample struct {
 	Foo string `custom:"foo"`
 	Bar string `csv:"BAR"`

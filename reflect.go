@@ -6,6 +6,15 @@ import (
 	"sync"
 )
 
+const (
+	// TagName defines key in the struct field's tag to scan
+	tagName = "csv"
+
+	// TagSeparator defines seperator string for multiple csv tags in
+	// struct fields
+	tagSeparator = ","
+)
+
 // --------------------------------------------------------------------------
 // Reflection helpers
 
@@ -89,8 +98,8 @@ func getFieldInfos(rType reflect.Type, parentIndexChain []int) []fieldInfo {
 		}
 
 		fieldInfo := fieldInfo{IndexChain: indexChain}
-		fieldTag := field.Tag.Get(TagName)
-		fieldTags := strings.Split(fieldTag, TagSeparator)
+		fieldTag := field.Tag.Get(tagName)
+		fieldTags := strings.Split(fieldTag, tagSeparator)
 		filteredTags := []string{}
 		for _, fieldTagEntry := range fieldTags {
 			if fieldTagEntry == "omitempty" {
