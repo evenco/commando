@@ -8,8 +8,9 @@ import (
 
 // Unmarshaller is a CSV to struct unmarshaller.
 type Unmarshaller struct {
-	config                 *validConfig
-	reader                 *csv.Reader}
+	config *validConfig
+	reader *csv.Reader
+}
 
 // NewUnmarshaller creates an unmarshaller from a csv.Reader and a struct.
 func (c *Config) NewUnmarshaller(reader *csv.Reader) (*Unmarshaller, error) {
@@ -31,14 +32,15 @@ func (c *Config) NewUnmarshaller(reader *csv.Reader) (*Unmarshaller, error) {
 	return um, nil
 }
 
-// Read returns an interface{} whose runtime type is the same as the struct that
-// was used to create the Unmarshaller.
+// Read returns an interface{} whose runtime type is the same as the
+// struct that was used to create the Unmarshaller.
 func (um *Unmarshaller) Read() (interface{}, error) {
 	value, _, err := um.ReadUnmatched()
 	return value, err
 }
 
-// ReadUnmatched is same as Read(), but returns a map of the columns that didn't match a field in the struct
+// ReadUnmatched is same as Read(), but returns a map of the columns
+// that didn't match a field in the struct.
 func (um *Unmarshaller) ReadUnmatched() (interface{}, map[string]string, error) {
 	row, err := um.reader.Read()
 	if err != nil {
@@ -60,8 +62,8 @@ func (um *Unmarshaller) createNew() (reflect.Value, bool) {
 	return outValue, isPointer
 }
 
-// unmarshalRow converts a CSV row to a struct, based on CSV struct tags.
-// If unmatched is non nil, it is populated with any columns that don't map to a struct field
+// unmarshalRow converts a CSV row to a struct, based on CSV struct
+// tags.
 func (um *Unmarshaller) unmarshalRow(row []string) (interface{}, map[string]string, error) {
 	unmatched := make(map[string]string)
 
