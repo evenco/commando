@@ -47,11 +47,9 @@ func (um *Unmarshaller) ReadUnmatched() (interface{}, map[string]string, error) 
 	return um.unmarshalRow(row)
 }
 
-// unmarshalRow converts a CSV row to a struct, based on CSV struct tags.
-// If unmatched is non nil, it is populated with any columns that don't map to a struct field
-func (um *Unmarshaller) unmarshalRow(row []string) (interface{}, map[string]string, error) {
-	unmatched := make(map[string]string)
-
+// createNew allocates and returns a new holder to unmarshal data
+// into.
+func (um *Unmarshaller) createNew() (reflect.Value, bool) {
 	isPointer := false
 	concreteOutType := um.config.outType
 	if um.config.outType.Kind() == reflect.Ptr {
@@ -59,6 +57,16 @@ func (um *Unmarshaller) unmarshalRow(row []string) (interface{}, map[string]stri
 		concreteOutType = concreteOutType.Elem()
 	}
 	outValue := createNewOutInner(isPointer, concreteOutType)
+	return outValue, isPointer
+}
+
+// unmarshalRow converts a CSV row to a struct, based on CSV struct tags.
+// If unmatched is non nil, it is populated with any columns that don't map to a struct field
+func (um *Unmarshaller) unmarshalRow(row []string) (interface{}, map[string]string, error) {
+	unmatched := make(map[string]string)
+
+	outValue, isPointer := um.createNew()
+
 	for j, csvColumnContent := range row {
 		if j < len(um.config.fieldInfoMap) && um.config.fieldInfoMap[j] != nil {
 			fieldInfo := um.config.fieldInfoMap[j]
