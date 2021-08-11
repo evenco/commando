@@ -65,6 +65,7 @@ func (c *Config) validate(headers []string) (*validConfig, error) {
 		Config: *c,
 		outType: reflect.TypeOf(c.Holder),
 		headers: headers,
+		structInfo: structInfo,
 		fieldInfoMap: csvHeadersLabels,
 		mismatchedHeaders: mismatchHeaderFields(structInfo.Fields, headers),
 		mismatchedStructFields: mismatchStructFields(structInfo.Fields, headers),
@@ -81,6 +82,7 @@ type validConfig struct {
 	// headers is a slice of header names in file order.
 	headers                []string
 
+	structInfo             *structInfo
 	fieldInfoMap           []*fieldInfo
 	mismatchedHeaders      []string
 	mismatchedStructFields []string
