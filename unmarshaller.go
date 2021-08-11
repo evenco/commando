@@ -8,24 +8,12 @@ import (
 
 // Unmarshaller is a CSV to struct unmarshaller.
 type Unmarshaller struct {
+	config                 *Config
 	reader                 *csv.Reader
 	Headers                []string
 	fieldInfoMap           []*fieldInfo
 	MismatchedHeaders      []string
 	MismatchedStructFields []string
-
-	// FailIfUnmatchedStructTags indicates whether it is considered an
-	// error when there is an unmatched struct tag.
-	FailIfUnmatchedStructTags bool
-
-	// FailIfDoubleHeaderNames indicates whether it is considered an
-	// error when a header name is repeated in the csv header.
-	FailIfDoubleHeaderNames bool
-
-	// ShouldAlignDuplicateHeadersWithStructFieldOrder indicates
-	// whether we should align duplicate CSV headers per their
-	// alignment in the struct definition.
-	ShouldAlignDuplicateHeadersWithStructFieldOrder bool
 
 	outType                reflect.Type
 }
@@ -37,7 +25,10 @@ func (c *Config) NewUnmarshaller(reader *csv.Reader) (*Unmarshaller, error) {
 		return nil, err
 	}
 
-	um := &Unmarshaller{reader: reader, outType: reflect.TypeOf(c.Holder)}
+	um := &Unmarshaller{
+		reader: reader,
+		config: c,
+		outType: reflect.TypeOf(c.Holder)}
 	err = validate(um, c.Holder, headers)
 	if err != nil {
 		return nil, err
@@ -81,20 +72,20 @@ func validate(um *Unmarshaller, s interface{}, headers []string) error {
 		curHeaderCount := headerCount[csvColumnHeader]
 		if fieldInfo := getCSVFieldPosition(csvColumnHeader, structInfo, curHeaderCount); fieldInfo != nil {
 			csvHeadersLabels[i] = fieldInfo
-			if um.ShouldAlignDuplicateHeadersWithStructFieldOrder {
+			if um.config.ShouldAlignDuplicateHeadersWithStructFieldOrder {
 				curHeaderCount++
 				headerCount[csvColumnHeader] = curHeaderCount
 			}
 		}
 	}
 
-	if um.FailIfUnmatchedStructTags {
+	if um.config.FailIfUnmatchedStructTags {
 		if err := maybeMissingStructFields(structInfo.Fields, headers); err != nil {
 			return err
 		}
 	}
 
-	if um.FailIfDoubleHeaderNames {
+	if um.config.FailIfDoubleHeaderNames {
 		if err := maybeDoubleHeaderNames(headers); err != nil {
 			return err
 		}
