@@ -128,13 +128,6 @@ func getCSVFieldPosition(key string, structInfo *structInfo, curHeaderCount int)
 	return nil
 }
 
-func createNewOutInner(outInnerWasPointer bool, outInnerType reflect.Type) reflect.Value {
-	if outInnerWasPointer {
-		return reflect.New(outInnerType)
-	}
-	return reflect.New(outInnerType).Elem()
-}
-
 func setInnerField(outInner *reflect.Value, outInnerWasPointer bool, index []int, value string, omitEmpty bool) error {
 	oi := *outInner
 	if outInnerWasPointer {
