@@ -9,6 +9,7 @@ import (
 // Unmarshaller is a CSV to struct unmarshaller.
 type Unmarshaller struct {
 	config *validConfig
+	line int
 	reader *csv.Reader
 }
 
@@ -27,6 +28,7 @@ func (c *Config) NewUnmarshaller(reader *csv.Reader) (*Unmarshaller, error) {
 	um := &Unmarshaller{
 		reader: reader,
 		config: vc,
+		line: 1,
 	}
 
 	return um, nil
@@ -39,6 +41,11 @@ func (um *Unmarshaller) Read() (interface{}, error) {
 	return value, err
 }
 
+// wrapLine wraps err, including the line the error occurred on.
+func wrapLine(err error, line int) error {
+	return err
+}
+
 // ReadUnmatched is same as Read(), but returns a map of the columns
 // that didn't match a field in the struct.
 func (um *Unmarshaller) ReadUnmatched() (interface{}, map[string]string, error) {
@@ -46,7 +53,11 @@ func (um *Unmarshaller) ReadUnmatched() (interface{}, map[string]string, error) 
 	if err != nil {
 		return nil, nil, err
 	}
-	return um.unmarshalRow(row)
+	out, unmatched, err := um.unmarshalRow(row)
+	if err != nil {
+		um.line++
+	}
+	return out, unmatched, wrapLine(err, um.line)
 }
 
 // createNew allocates and returns a new holder to unmarshal data
