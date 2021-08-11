@@ -29,7 +29,6 @@ type fieldInfo struct {
 	keys         []string
 	omitEmpty    bool
 	IndexChain   []int
-	defaultValue string
 }
 
 func (f fieldInfo) getFirstKey() string {
@@ -104,8 +103,6 @@ func getFieldInfos(rType reflect.Type, parentIndexChain []int) []fieldInfo {
 		for _, fieldTagEntry := range fieldTags {
 			if fieldTagEntry == "omitempty" {
 				fieldInfo.omitEmpty = true
-			} else if strings.HasPrefix(fieldTagEntry, "default=") {
-				fieldInfo.defaultValue = strings.TrimPrefix(fieldTagEntry, "default=")
 			} else {
 				filteredTags = append(filteredTags, fieldTagEntry)
 			}
