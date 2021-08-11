@@ -8,14 +8,12 @@ import (
 
 // Unmarshaller is a CSV to struct unmarshaller.
 type Unmarshaller struct {
-	config                 *Config
+	config                 *validConfig
 	reader                 *csv.Reader
 	Headers                []string
 	fieldInfoMap           []*fieldInfo
 	MismatchedHeaders      []string
 	MismatchedStructFields []string
-
-	outType                reflect.Type
 }
 
 // NewUnmarshaller creates an unmarshaller from a csv.Reader and a struct.
@@ -25,10 +23,16 @@ func (c *Config) NewUnmarshaller(reader *csv.Reader) (*Unmarshaller, error) {
 		return nil, err
 	}
 
+	vc, err := c.validate()
+	if err != nil {
+		return nil, err
+	}
+
 	um := &Unmarshaller{
 		reader: reader,
-		config: c,
-		outType: reflect.TypeOf(c.Holder)}
+		config: vc,
+	}
+
 	err = validate(um, c.Holder, headers)
 	if err != nil {
 		return nil, err
@@ -104,8 +108,8 @@ func (um *Unmarshaller) unmarshalRow(row []string) (interface{}, map[string]stri
 	unmatched := make(map[string]string)
 
 	isPointer := false
-	concreteOutType := um.outType
-	if um.outType.Kind() == reflect.Ptr {
+	concreteOutType := um.config.outType
+	if um.config.outType.Kind() == reflect.Ptr {
 		isPointer = true
 		concreteOutType = concreteOutType.Elem()
 	}

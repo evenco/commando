@@ -1,5 +1,9 @@
 package gocsv
 
+import (
+	"reflect"
+)
+
 type Config struct {
 	// Holder is the struct to Marshal/unmarshal.
 	Holder interface{}
@@ -16,4 +20,17 @@ type Config struct {
 	// whether we should align duplicate CSV headers per their
 	// alignment in the struct definition.
 	ShouldAlignDuplicateHeadersWithStructFieldOrder bool
+}
+
+func (c *Config) validate() (*validConfig, error) {
+	return &validConfig{
+		Config: *c,
+		outType: reflect.TypeOf(c.Holder),
+	}, nil
+}
+
+type validConfig struct {
+	Config
+
+	outType reflect.Type
 }
