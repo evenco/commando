@@ -31,14 +31,14 @@ type Unmarshaller struct {
 }
 
 // NewUnmarshaller creates an unmarshaller from a csv.Reader and a struct.
-func NewUnmarshaller(reader *csv.Reader, out interface{}) (*Unmarshaller, error) {
+func (c *Config) NewUnmarshaller(reader *csv.Reader) (*Unmarshaller, error) {
 	headers, err := reader.Read()
 	if err != nil {
 		return nil, err
 	}
 
-	um := &Unmarshaller{reader: reader, outType: reflect.TypeOf(out)}
-	err = validate(um, out, headers)
+	um := &Unmarshaller{reader: reader, outType: reflect.TypeOf(c.Holder)}
+	err = validate(um, c.Holder, headers)
 	if err != nil {
 		return nil, err
 	}
