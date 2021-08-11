@@ -9,12 +9,7 @@ import (
 // Unmarshaller is a CSV to struct unmarshaller.
 type Unmarshaller struct {
 	config                 *validConfig
-	reader                 *csv.Reader
-	Headers                []string
-	fieldInfoMap           []*fieldInfo
-	MismatchedHeaders      []string
-	MismatchedStructFields []string
-}
+	reader                 *csv.Reader}
 
 // NewUnmarshaller creates an unmarshaller from a csv.Reader and a struct.
 func (c *Config) NewUnmarshaller(reader *csv.Reader) (*Unmarshaller, error) {
@@ -23,7 +18,7 @@ func (c *Config) NewUnmarshaller(reader *csv.Reader) (*Unmarshaller, error) {
 		return nil, err
 	}
 
-	vc, err := c.validate()
+	vc, err := c.validate(headers)
 	if err != nil {
 		return nil, err
 	}
@@ -33,10 +28,6 @@ func (c *Config) NewUnmarshaller(reader *csv.Reader) (*Unmarshaller, error) {
 		config: vc,
 	}
 
-	err = validate(um, c.Holder, headers)
-	if err != nil {
-		return nil, err
-	}
 	return um, nil
 }
 
@@ -56,52 +47,6 @@ func (um *Unmarshaller) ReadUnmatched() (interface{}, map[string]string, error) 
 	return um.unmarshalRow(row)
 }
 
-// validate ensures that a struct was used to create the Unmarshaller, and validates
-// CSV headers against the CSV tags in the struct.
-func validate(um *Unmarshaller, s interface{}, headers []string) error {
-	concreteType := reflect.TypeOf(s)
-	if concreteType.Kind() == reflect.Ptr {
-		concreteType = concreteType.Elem()
-	}
-	if err := ensureOutInnerType(concreteType); err != nil {
-		return err
-	}
-	structInfo := getStructInfo(concreteType) // Get struct info to get CSV annotations.
-	if len(structInfo.Fields) == 0 {
-		return ErrNoStructTags
-	}
-	csvHeadersLabels := make([]*fieldInfo, len(headers)) // Used to store the corresponding header <-> position in CSV
-	headerCount := map[string]int{}
-	for i, csvColumnHeader := range headers {
-		curHeaderCount := headerCount[csvColumnHeader]
-		if fieldInfo := getCSVFieldPosition(csvColumnHeader, structInfo, curHeaderCount); fieldInfo != nil {
-			csvHeadersLabels[i] = fieldInfo
-			if um.config.ShouldAlignDuplicateHeadersWithStructFieldOrder {
-				curHeaderCount++
-				headerCount[csvColumnHeader] = curHeaderCount
-			}
-		}
-	}
-
-	if um.config.FailIfUnmatchedStructTags {
-		if err := maybeMissingStructFields(structInfo.Fields, headers); err != nil {
-			return err
-		}
-	}
-
-	if um.config.FailIfDoubleHeaderNames {
-		if err := maybeDoubleHeaderNames(headers); err != nil {
-			return err
-		}
-	}
-
-	um.Headers = headers
-	um.fieldInfoMap = csvHeadersLabels
-	um.MismatchedHeaders = mismatchHeaderFields(structInfo.Fields, headers)
-	um.MismatchedStructFields = mismatchStructFields(structInfo.Fields, headers)
-	return nil
-}
-
 // unmarshalRow converts a CSV row to a struct, based on CSV struct tags.
 // If unmatched is non nil, it is populated with any columns that don't map to a struct field
 func (um *Unmarshaller) unmarshalRow(row []string) (interface{}, map[string]string, error) {
@@ -115,8 +60,8 @@ func (um *Unmarshaller) unmarshalRow(row []string) (interface{}, map[string]stri
 	}
 	outValue := createNewOutInner(isPointer, concreteOutType)
 	for j, csvColumnContent := range row {
-		if j < len(um.fieldInfoMap) && um.fieldInfoMap[j] != nil {
-			fieldInfo := um.fieldInfoMap[j]
+		if j < len(um.config.fieldInfoMap) && um.config.fieldInfoMap[j] != nil {
+			fieldInfo := um.config.fieldInfoMap[j]
 			if err := setInnerField(&outValue, isPointer, fieldInfo.IndexChain, csvColumnContent, fieldInfo.omitEmpty); err != nil { // Set field of struct
 				return nil, nil, fmt.Errorf("cannot assign field at %v to %s through index chain %v: %v", j, outValue.Type(), fieldInfo.IndexChain, err)
 			}
