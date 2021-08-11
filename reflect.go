@@ -1,6 +1,7 @@
 package gocsv
 
 import (
+	"fmt"
 	"reflect"
 	"strings"
 	"sync"
@@ -20,6 +21,14 @@ const (
 
 type structInfo struct {
 	Fields []fieldInfo
+}
+
+func (si *structInfo) headers() []string {
+	headers := []string{}
+	for _, f := range si.Fields {
+		headers = append(headers, f.keys...)
+	}
+	return headers
 }
 
 // fieldInfo is a struct field that should be mapped to a CSV column, or vice-versa
@@ -136,4 +145,31 @@ func getConcreteReflectValueAndType(in interface{}) (reflect.Value, reflect.Type
 		value = value.Elem()
 	}
 	return value, value.Type()
+}
+
+
+func ensureStructOrPtr(t reflect.Type) error {
+	switch t.Kind() {
+	case reflect.Struct:
+		fallthrough
+	case reflect.Ptr:
+		return nil
+	}
+	return fmt.Errorf("cannot use " + t.String() + ", only slice or array supported")
+}
+
+func getInnerField(outInner reflect.Value, outInnerWasPointer bool, index []int) (string, error) {
+	oi := outInner
+	if outInnerWasPointer {
+		if oi.IsNil() {
+			return "", nil
+		}
+		oi = outInner.Elem()
+	}
+	// because pointers can be nil need to recurse one index at a time and perform nil check
+	if len(index) > 1 {
+		nextField := oi.Field(index[0])
+		return getInnerField(nextField, nextField.Kind() == reflect.Ptr, index[1:])
+	}
+	return getFieldAsString(oi.FieldByIndex(index))
 }
