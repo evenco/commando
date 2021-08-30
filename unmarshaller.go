@@ -10,11 +10,11 @@ import (
 type Unmarshaller struct {
 	config *validConfig
 	line int
-	reader *csv.Reader
+	reader Reader
 }
 
-// NewUnmarshaller creates an unmarshaller from a csv.Reader and a struct.
-func (c *Config) NewUnmarshaller(reader *csv.Reader) (*Unmarshaller, error) {
+// NewUnmarshaller creates an unmarshaller from a Reader and a struct.
+func (c *Config) NewUnmarshaller(reader Reader) (*Unmarshaller, error) {
 	headers, err := reader.Read()
 	if err != nil {
 		return nil, err
