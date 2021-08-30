@@ -5,7 +5,7 @@ import (
 )
 
 type Config struct {
-	// Holder is the struct to Marshal/unmarshal.
+	// Holder is the type of struct to marshal from/unmarshal info.
 	Holder interface{}
 
 	// FailIfUnmatchedStructTags indicates whether it is considered an
@@ -62,12 +62,12 @@ func (c *Config) validate(headers []string) (*validConfig, error) {
 	}
 
 	return &validConfig{
-		Config: *c,
-		outType: reflect.TypeOf(c.Holder),
-		headers: headers,
-		structInfo: structInfo,
-		fieldInfoMap: csvHeadersLabels,
-		mismatchedHeaders: mismatchHeaderFields(structInfo.Fields, headers),
+		Config:                 *c,
+		outType:                reflect.TypeOf(c.Holder),
+		headers:                headers,
+		structInfo:             structInfo,
+		fieldInfoMap:           csvHeadersLabels,
+		mismatchedHeaders:      mismatchHeaderFields(structInfo.Fields, headers),
 		mismatchedStructFields: mismatchStructFields(structInfo.Fields, headers),
 	}, nil
 }
@@ -80,7 +80,7 @@ type validConfig struct {
 	outType reflect.Type
 
 	// headers is a slice of header names in file order.
-	headers                []string
+	headers []string
 
 	structInfo             *structInfo
 	fieldInfoMap           []*fieldInfo
