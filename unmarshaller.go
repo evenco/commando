@@ -1,7 +1,6 @@
 package gocsv
 
 import (
-	"encoding/csv"
 	"fmt"
 	"reflect"
 )
