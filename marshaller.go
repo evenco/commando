@@ -11,6 +11,12 @@ type Marshaller struct {
 	writer *csv.Writer
 }
 
+// NewMarshaller is a convenience function which allocates and
+// returns a new Marshaller.
+func NewMarshaller(holder interface{}, writer *csv.Writer) (*Marshaller, error) {
+	return (&Config{Holder: holder}).NewMarshaller(writer)
+}
+
 // NewMarshaller creates a marshaller from a csv.Writer.
 func (c *Config) NewMarshaller(writer *csv.Writer) (*Marshaller, error) {
 	vc, err := c.validate(nil)

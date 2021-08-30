@@ -2,14 +2,21 @@ package gocsv
 
 import (
 	"fmt"
+	"io"
 	"reflect"
 )
 
 // Unmarshaller is a CSV to struct unmarshaller.
 type Unmarshaller struct {
 	config *validConfig
-	line int
+	line   int
 	reader Reader
+}
+
+// NewUnmarshaller is a convenience function which allocates and
+// returns a new Unmarshaller.
+func NewUnmarshaller(holder interface{}, reader Reader) (*Unmarshaller, error) {
+	return (&Config{Holder: holder}).NewUnmarshaller(reader)
 }
 
 // NewUnmarshaller creates an unmarshaller from a Reader and a struct.
@@ -27,7 +34,7 @@ func (c *Config) NewUnmarshaller(reader Reader) (*Unmarshaller, error) {
 	um := &Unmarshaller{
 		reader: reader,
 		config: vc,
-		line: 1,
+		line:   1,
 	}
 
 	return um, nil
@@ -38,6 +45,22 @@ func (c *Config) NewUnmarshaller(reader Reader) (*Unmarshaller, error) {
 func (um *Unmarshaller) Read() (interface{}, error) {
 	value, _, err := um.ReadUnmatched()
 	return value, err
+}
+
+func ReadAllCallback(um *Unmarshaller, cb func(interface{}) error) error {
+	for {
+		rec, err := um.Read()
+		if err == io.EOF {
+			return nil
+		} else if err != nil {
+			return err
+		}
+
+		if err := cb(rec); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // wrapLine wraps err, including the line the error occurred on.
