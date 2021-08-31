@@ -137,7 +137,6 @@ func getConcreteReflectValueAndType(in interface{}) (reflect.Value, reflect.Type
 	return value, value.Type()
 }
 
-
 func ensureStructOrPtr(t reflect.Type) error {
 	switch t.Kind() {
 	case reflect.Struct:
