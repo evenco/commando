@@ -47,16 +47,19 @@ func (um *Unmarshaller) Read() (interface{}, error) {
 	return value, err
 }
 
-func ReadAllCallback(um *Unmarshaller, cb func(interface{}) error) error {
+// ReadAllCallback calls cb for every record Read() from um.
+func ReadAllCallback(um *Unmarshaller, onSuccess func(interface{}) error, onError func(error) error) error {
 	for {
 		rec, err := um.Read()
 		if err == io.EOF {
 			return nil
 		} else if err != nil {
-			return err
+			if handlerErr := onError(err); handlerErr != nil {
+				return handlerErr
+			}
 		}
 
-		if err := cb(rec); err != nil {
+		if err := onSuccess(rec); err != nil {
 			return err
 		}
 	}

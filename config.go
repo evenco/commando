@@ -8,6 +8,14 @@ type Config struct {
 	// Holder is the type of struct to marshal from/unmarshal info.
 	Holder interface{}
 
+	// ErrorHandler is invoked if there's a recoverable error.
+	//
+	// If the func returns an error, processing stops.  If it returns
+	// nil, processing continues.
+	//
+	// If unset, processing stops on the first error.
+	ErrorHandler func(error) error
+
 	// FailIfUnmatchedStructTags indicates whether it is considered an
 	// error when there is an unmatched struct tag.
 	FailIfUnmatchedStructTags bool
