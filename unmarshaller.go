@@ -49,12 +49,12 @@ func (um *Unmarshaller) Read() (interface{}, error) {
 }
 
 // ReadAll returns a slice of structs.
-func (um *Unmarshaller) ReadAll() (interface{}, error) {
+func (um *Unmarshaller) ReadAll(onError func(err error) error) (interface{}, error) {
 	out := reflect.MakeSlice(reflect.SliceOf(um.config.outType), 0, 0)
 	err := ReadAllCallback(um, func(rec interface{}) error {
 		out = reflect.Append(out, reflect.ValueOf(rec))
 		return nil
-	}, StopOnError)
+	}, onError)
 
 	return out.Interface(), err
 }

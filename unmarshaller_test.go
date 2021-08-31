@@ -64,7 +64,7 @@ c,d
 		t.Fatalf("Failed to allocate Unmarshaller: %s", err.Error())
 	}
 
-	out, err := um.ReadAll()
+	out, err := um.ReadAll(StopOnError)
 	if err != nil {
 		t.Fatalf("Failed to allocate ReadAll(): %s", err.Error())
 	}
@@ -84,7 +84,7 @@ c,d
 		t.Fatalf("Failed to allocate Unmarshaller: %s", err.Error())
 	}
 
-	out, err = um.ReadAll()
+	out, err = um.ReadAll(StopOnError)
 	if err != nil {
 		t.Fatalf("Failed to allocate ReadAll(): %s", err.Error())
 	}
