@@ -1,6 +1,7 @@
 package commando
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"reflect"
@@ -47,11 +48,22 @@ func (um *Unmarshaller) Read() (interface{}, error) {
 	return value, err
 }
 
+// ReadAll returns a slice of structs.
+func (um *Unmarshaller) ReadAll() (interface{}, error) {
+	out := reflect.MakeSlice(reflect.SliceOf(um.config.outType), 0, 0)
+	err := ReadAllCallback(um, func(rec interface{}) error {
+		out = reflect.Append(out, reflect.ValueOf(rec))
+		return nil
+	}, StopOnError)
+
+	return out.Interface(), err
+}
+
 // ReadAllCallback calls cb for every record Read() from um.
 func ReadAllCallback(um *Unmarshaller, onSuccess func(interface{}) error, onError func(error) error) error {
 	for {
 		rec, err := um.Read()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			return nil
 		} else if err != nil {
 			if handlerErr := onError(err); handlerErr != nil {
@@ -69,7 +81,7 @@ func ReadAllCallback(um *Unmarshaller, onSuccess func(interface{}) error, onErro
 // wrapLine wraps err, including the line the error occurred on.
 func wrapLine(err error, line int) error {
 	if err != nil {
-		return fmt.Errorf("On line %d: %w", line, err)
+		return fmt.Errorf("on line %d: %w", line, err)
 	}
 	return err
 }

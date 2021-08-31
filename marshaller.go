@@ -2,6 +2,7 @@ package commando
 
 import (
 	"encoding/csv"
+	"fmt"
 	"reflect"
 )
 
@@ -17,7 +18,8 @@ func NewMarshaller(holder interface{}, writer *csv.Writer) (*Marshaller, error) 
 	return (&Config{Holder: holder}).NewMarshaller(writer)
 }
 
-// NewMarshaller creates a marshaller from a csv.Writer.
+// NewMarshaller creates a marshaller from a csv.Writer.  The CSV
+// header will be immediately written to writer.
 func (c *Config) NewMarshaller(writer *csv.Writer) (*Marshaller, error) {
 	vc, err := c.validate(nil)
 	if err != nil {
