@@ -65,6 +65,9 @@ func ReadAllCallback(um *Unmarshaller, cb func(interface{}) error) error {
 
 // wrapLine wraps err, including the line the error occurred on.
 func wrapLine(err error, line int) error {
+	if err != nil {
+		return fmt.Errorf("On line %d: %w", line, err)
+	}
 	return err
 }
 
