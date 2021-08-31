@@ -68,7 +68,7 @@ func Benchmark_unmarshall_TypeUnmarshaller(b *testing.B) {
 	sample := sampleTypeUnmarshaller{}
 	val := reflect.ValueOf(&sample)
 	for n := 0; n < b.N; n++ {
-		if err := unmarshall(val, "foo"); err != nil {
+		if err := unmarshal(val, "foo"); err != nil {
 			b.Fatalf("unmarshall error: %s", err.Error())
 		}
 	}
@@ -78,7 +78,7 @@ func Benchmark_unmarshall_TextUnmarshaller(b *testing.B) {
 	sample := sampleTextUnmarshaller{}
 	val := reflect.ValueOf(&sample)
 	for n := 0; n < b.N; n++ {
-		if err := unmarshall(val, "foo"); err != nil {
+		if err := unmarshal(val, "foo"); err != nil {
 			b.Fatalf("unmarshall error: %s", err.Error())
 		}
 	}
@@ -88,7 +88,7 @@ func Benchmark_marshall_TypeMarshaller(b *testing.B) {
 	sample := sampleTypeUnmarshaller{"foo"}
 	val := reflect.ValueOf(&sample)
 	for n := 0; n < b.N; n++ {
-		_, err := marshall(val)
+		_, err := marshal(val)
 		if err != nil {
 			b.Fatalf("marshall error: %s", err.Error())
 		}
@@ -99,7 +99,7 @@ func Benchmark_marshall_TextMarshaller(b *testing.B) {
 	sample := sampleTextUnmarshaller{[]byte("foo")}
 	val := reflect.ValueOf(&sample)
 	for n := 0; n < b.N; n++ {
-		_, err := marshall(val)
+		_, err := marshal(val)
 		if err != nil {
 			b.Fatalf("marshall error: %s", err.Error())
 		}
@@ -110,7 +110,7 @@ func Benchmark_marshall_Stringer(b *testing.B) {
 	sample := sampleStringer("foo")
 	val := reflect.ValueOf(&sample)
 	for n := 0; n < b.N; n++ {
-		_, err := marshall(val)
+		_, err := marshal(val)
 		if err != nil {
 			b.Fatalf("marshall error: %s", err.Error())
 		}
