@@ -145,7 +145,7 @@ func ensureStructOrPtr(t reflect.Type) error {
 	case reflect.Ptr:
 		return nil
 	}
-	return fmt.Errorf("cannot use " + t.String() + ", only slice or array supported")
+	return fmt.Errorf("cannot use %q, only slice or array supported", t)
 }
 
 func getInnerField(outInner reflect.Value, outInnerWasPointer bool, index []int) (string, error) {

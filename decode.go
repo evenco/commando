@@ -83,7 +83,7 @@ func ensureOutInnerType(outInnerType reflect.Type) error {
 	case reflect.Struct:
 		return nil
 	}
-	return fmt.Errorf("cannot use " + outInnerType.String() + ", only struct supported")
+	return fmt.Errorf("cannot use %q, only struct supported", outInnerType)
 }
 
 func getCSVFieldPosition(key string, structInfo *structInfo, curHeaderCount int) *fieldInfo {

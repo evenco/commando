@@ -112,7 +112,7 @@ func (um *Unmarshaller) unmarshalRow(row []string) (interface{}, map[string]stri
 		if j < len(um.config.fieldInfoMap) && um.config.fieldInfoMap[j] != nil {
 			fieldInfo := um.config.fieldInfoMap[j]
 			if err := setInnerField(&outValue, isPointer, fieldInfo.IndexChain, csvColumnContent, fieldInfo.omitEmpty); err != nil { // Set field of struct
-				return nil, nil, fmt.Errorf("cannot assign field at %v to %s through index chain %v: %v", j, outValue.Type(), fieldInfo.IndexChain, err)
+				return nil, nil, fmt.Errorf("cannot assign field at %v to %T through index chain %v: %v", j, outValue, fieldInfo.IndexChain, err)
 			}
 		}
 	}

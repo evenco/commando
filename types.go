@@ -72,7 +72,7 @@ func toString(in interface{}) (string, error) {
 	case reflect.Float64:
 		return strconv.FormatFloat(inValue.Float(), byte('f'), -1, 64), nil
 	}
-	return "", fmt.Errorf("No known conversion from " + inValue.Type().String() + " to string")
+	return "", fmt.Errorf("No known conversion from %T to string", inValue)
 }
 
 func toBool(in interface{}) (bool, error) {
@@ -110,7 +110,7 @@ func toBool(in interface{}) (bool, error) {
 		}
 		return false, nil
 	}
-	return false, fmt.Errorf("No known conversion from " + inValue.Type().String() + " to bool")
+	return false, fmt.Errorf("No known conversion from %T to bool", inValue)
 }
 
 func toInt(in interface{}) (int64, error) {
@@ -136,7 +136,7 @@ func toInt(in interface{}) (int64, error) {
 	case reflect.Float32, reflect.Float64:
 		return int64(inValue.Float()), nil
 	}
-	return 0, fmt.Errorf("No known conversion from " + inValue.Type().String() + " to int")
+	return 0, fmt.Errorf("No known conversion from %T to int", inValue)
 }
 
 func toUint(in interface{}) (uint64, error) {
@@ -170,7 +170,7 @@ func toUint(in interface{}) (uint64, error) {
 	case reflect.Float32, reflect.Float64:
 		return uint64(inValue.Float()), nil
 	}
-	return 0, fmt.Errorf("No known conversion from " + inValue.Type().String() + " to uint")
+	return 0, fmt.Errorf("No known conversion from %T to uint", inValue)
 }
 
 func toFloat(in interface{}) (float64, error) {
@@ -195,7 +195,7 @@ func toFloat(in interface{}) (float64, error) {
 	case reflect.Float32, reflect.Float64:
 		return inValue.Float(), nil
 	}
-	return 0, fmt.Errorf("No known conversion from " + inValue.Type().String() + " to float")
+	return 0, fmt.Errorf("No known conversion from %T to float", inValue)
 }
 
 func setField(field reflect.Value, value string, omitEmpty bool) error {
