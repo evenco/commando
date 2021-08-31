@@ -129,16 +129,6 @@ func getFieldInfos(rType reflect.Type, parentIndexChain []int) []fieldInfo {
 	return fieldsList
 }
 
-func getConcreteContainerInnerType(in reflect.Type) (inInnerWasPointer bool, inInnerType reflect.Type) {
-	inInnerType = in.Elem()
-	inInnerWasPointer = false
-	if inInnerType.Kind() == reflect.Ptr {
-		inInnerWasPointer = true
-		inInnerType = inInnerType.Elem()
-	}
-	return inInnerWasPointer, inInnerType
-}
-
 func getConcreteReflectValueAndType(in interface{}) (reflect.Value, reflect.Type) {
 	value := reflect.ValueOf(in)
 	if value.Kind() == reflect.Ptr {

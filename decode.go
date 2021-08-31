@@ -77,19 +77,6 @@ func maybeDoubleHeaderNames(headers []string) error {
 	return nil
 }
 
-// Check if the outType is an array or a slice
-func ensureOutType(outType reflect.Type) error {
-	switch outType.Kind() {
-	case reflect.Slice:
-		fallthrough
-	case reflect.Chan:
-		fallthrough
-	case reflect.Array:
-		return nil
-	}
-	return fmt.Errorf("cannot use " + outType.String() + ", only slice or array supported")
-}
-
 // Check if the outInnerType is of type struct
 func ensureOutInnerType(outInnerType reflect.Type) error {
 	switch outInnerType.Kind() {
@@ -97,22 +84,6 @@ func ensureOutInnerType(outInnerType reflect.Type) error {
 		return nil
 	}
 	return fmt.Errorf("cannot use " + outInnerType.String() + ", only struct supported")
-}
-
-func ensureOutCapacity(out *reflect.Value, csvLen int) error {
-	switch out.Kind() {
-	case reflect.Array:
-		if out.Len() < csvLen-1 { // Array is not big enough to hold the CSV content (arrays are not addressable)
-			return fmt.Errorf("array capacity problem: cannot store %d %s in %s", csvLen-1, out.Type().Elem().String(), out.Type().String())
-		}
-	case reflect.Slice:
-		if !out.CanAddr() && out.Len() < csvLen-1 { // Slice is not big enough tho hold the CSV content and is not addressable
-			return fmt.Errorf("slice capacity problem and is not addressable (did you forget &?)")
-		} else if out.CanAddr() && out.Len() < csvLen-1 {
-			out.Set(reflect.MakeSlice(out.Type(), csvLen-1, csvLen-1)) // Slice is not big enough, so grows it
-		}
-	}
-	return nil
 }
 
 func getCSVFieldPosition(key string, structInfo *structInfo, curHeaderCount int) *fieldInfo {
