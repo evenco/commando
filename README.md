@@ -6,7 +6,7 @@ The Commando package aims to provide easy marshalling and unmarshalling of CSV i
 Installation
 =====
 
-```go get -u github.com/ieure/commando```
+```go get -u github.com/evenco/commando```
 
 Full example
 =====
@@ -33,7 +33,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/ieure/commando"
+	"github.com/evenco/commando"
 )
 
 type Client struct { // Our example struct, you can use "-" to ignore a field

@@ -1,3 +1,3 @@
-module github.com/ieure/commando
+module github.com/evenco/commando
 
 go 1.13
