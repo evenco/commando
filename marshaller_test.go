@@ -1,4 +1,4 @@
-package gocsv
+package commando
 
 import (
 	"encoding/csv"
@@ -7,6 +7,8 @@ import (
 )
 
 func TestMarshaller(t *testing.T) {
+	t.Parallel()
+
 	type sample struct {
 		FieldA string `csv:"field_a"`
 		FieldB string `csv:"field_b"`

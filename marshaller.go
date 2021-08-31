@@ -1,4 +1,4 @@
-package gocsv
+package commando
 
 import (
 	"encoding/csv"
@@ -49,7 +49,6 @@ func (m *Marshaller) Write(record interface{}) error {
 
 	csvHeadersLabels := make([]string, len(m.config.structInfo.Fields))
 	for j, fieldInfo := range m.config.structInfo.Fields {
-		// csvHeadersLabels[j] = ""
 		inInnerFieldValue, err := getInnerField(inValue, inInnerWasPointer, fieldInfo.IndexChain) // Get the correct field header <-> position
 		if err != nil {
 			return err

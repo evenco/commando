@@ -4,6 +4,6 @@
 // Use of this source code is governed by a MIT license
 // The license can be found in the LICENSE file.
 
-// The GoCSV package aims to provide easy CSV serialization and
+// The Commando package aims to provide easy CSV serialization and
 // deserialization to Go.
-package gocsv
+package commando

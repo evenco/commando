@@ -1,17 +1,17 @@
 Go CSV
 =====
 
-The GoCSV package aims to provide easy serialization and deserialization functions to use CSV in Golang
+The Commando package aims to provide easy serialization and deserialization functions to use CSV in Golang
 
 API and techniques inspired from https://godoc.org/gopkg.in/mgo.v2
 
-[![GoDoc](https://godoc.org/github.com/gocarina/gocsv?status.png)](https://godoc.org/github.com/gocarina/gocsv)
-[![Build Status](https://travis-ci.org/gocarina/gocsv.svg?branch=master)](https://travis-ci.org/gocarina/gocsv)
+[![GoDoc](https://godoc.org/github.com/gocarina/commando?status.png)](https://godoc.org/github.com/gocarina/commando)
+[![Build Status](https://travis-ci.org/gocarina/commando.svg?branch=master)](https://travis-ci.org/gocarina/commando)
 
 Installation
 =====
 
-```go get -u github.com/gocarina/gocsv```
+```go get -u github.com/gocarina/commando```
 
 Full example
 =====
@@ -38,7 +38,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/gocarina/gocsv"
+	"github.com/gocarina/commando"
 )
 
 type Client struct { // Our example struct, you can use "-" to ignore a field
@@ -57,7 +57,7 @@ func main() {
 
 	clients := []*Client{}
 
-	if err := gocsv.UnmarshalFile(clientsFile, &clients); err != nil { // Load clients from file
+	if err := commando.UnmarshalFile(clientsFile, &clients); err != nil { // Load clients from file
 		panic(err)
 	}
 	for _, client := range clients {
@@ -72,8 +72,8 @@ func main() {
 	clients = append(clients, &Client{Id: "13", Name: "Fred"})
 	clients = append(clients, &Client{Id: "14", Name: "James", Age: "32"})
 	clients = append(clients, &Client{Id: "15", Name: "Danny"})
-	csvContent, err := gocsv.MarshalString(&clients) // Get all clients as CSV string
-	//err = gocsv.MarshalFile(&clients, clientsFile) // Use this to save the CSV back to the file
+	csvContent, err := commando.MarshalString(&clients) // Get all clients as CSV string
+	//err = commando.MarshalFile(&clients, clientsFile) // Use this to save the CSV back to the file
 	if err != nil {
 		panic(err)
 	}
@@ -124,7 +124,7 @@ Customizable CSV Reader / Writer
 func main() {
         ...
 	
-        gocsv.SetCSVReader(func(in io.Reader) gocsv.CSVReader {
+        commando.SetCSVReader(func(in io.Reader) commando.CSVReader {
             r := csv.NewReader(in)
             r.Comma = '|'
             return r // Allows use pipe as delimiter
@@ -132,7 +132,7 @@ func main() {
 	
         ...
 	
-        gocsv.SetCSVReader(func(in io.Reader) gocsv.CSVReader {
+        commando.SetCSVReader(func(in io.Reader) commando.CSVReader {
             r := csv.NewReader(in)
             r.LazyQuotes = true
             r.Comma = '.'
@@ -141,26 +141,26 @@ func main() {
 	
         ...
 	
-        gocsv.SetCSVReader(func(in io.Reader) gocsv.CSVReader {
+        commando.SetCSVReader(func(in io.Reader) commando.CSVReader {
             //return csv.NewReader(in)
-            return gocsv.LazyCSVReader(in) // Allows use of quotes in CSV
+            return commando.LazyCSVReader(in) // Allows use of quotes in CSV
         })
 
         ...
 
-        gocsv.UnmarshalFile(file, &clients)
+        commando.UnmarshalFile(file, &clients)
 
         ...
 
-        gocsv.SetCSVWriter(func(out io.Writer) *SafeCSVWriter {
+        commando.SetCSVWriter(func(out io.Writer) *SafeCSVWriter {
             writer := csv.NewWriter(out)
             writer.Comma = '|'
-            return gocsv.NewSafeCSVWriter(writer)
+            return commando.NewSafeCSVWriter(writer)
         })
 
         ...
 
-        gocsv.MarshalFile(&clients, file)
+        commando.MarshalFile(&clients, file)
 
         ...
 }
