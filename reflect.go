@@ -1,9 +1,18 @@
-package gocsv
+package commando
 
 import (
 	"reflect"
 	"strings"
 	"sync"
+)
+
+const (
+	// TagName defines key in the struct field's tag to scan
+	tagName = "csv"
+
+	// TagSeparator defines seperator string for multiple csv tags in
+	// struct fields
+	tagSeparator = ","
 )
 
 // --------------------------------------------------------------------------
@@ -13,6 +22,14 @@ type structInfo struct {
 	Fields []fieldInfo
 }
 
+func (si *structInfo) headers() []string {
+	headers := []string{}
+	for _, f := range si.Fields {
+		headers = append(headers, f.keys...)
+	}
+	return headers
+}
+
 // fieldInfo is a struct field that should be mapped to a CSV column, or vice-versa
 // Each IndexChain element before the last is the index of an the embedded struct field
 // that defines Key as a tag
@@ -20,7 +37,6 @@ type fieldInfo struct {
 	keys         []string
 	omitEmpty    bool
 	IndexChain   []int
-	defaultValue string
 }
 
 func (f fieldInfo) getFirstKey() string {
@@ -89,16 +105,14 @@ func getFieldInfos(rType reflect.Type, parentIndexChain []int) []fieldInfo {
 		}
 
 		fieldInfo := fieldInfo{IndexChain: indexChain}
-		fieldTag := field.Tag.Get(TagName)
-		fieldTags := strings.Split(fieldTag, TagSeparator)
+		fieldTag := field.Tag.Get(tagName)
+		fieldTags := strings.Split(fieldTag, tagSeparator)
 		filteredTags := []string{}
 		for _, fieldTagEntry := range fieldTags {
 			if fieldTagEntry == "omitempty" {
 				fieldInfo.omitEmpty = true
-			} else if strings.HasPrefix(fieldTagEntry, "default=") {
-				fieldInfo.defaultValue = strings.TrimPrefix(fieldTagEntry, "default=")
 			} else {
-				filteredTags = append(filteredTags, normalizeName(fieldTagEntry))
+				filteredTags = append(filteredTags, fieldTagEntry)
 			}
 		}
 
@@ -107,21 +121,11 @@ func getFieldInfos(rType reflect.Type, parentIndexChain []int) []fieldInfo {
 		} else if len(filteredTags) > 0 && filteredTags[0] != "" {
 			fieldInfo.keys = filteredTags
 		} else {
-			fieldInfo.keys = []string{normalizeName(field.Name)}
+			fieldInfo.keys = []string{field.Name}
 		}
 		fieldsList = append(fieldsList, fieldInfo)
 	}
 	return fieldsList
-}
-
-func getConcreteContainerInnerType(in reflect.Type) (inInnerWasPointer bool, inInnerType reflect.Type) {
-	inInnerType = in.Elem()
-	inInnerWasPointer = false
-	if inInnerType.Kind() == reflect.Ptr {
-		inInnerWasPointer = true
-		inInnerType = inInnerType.Elem()
-	}
-	return inInnerWasPointer, inInnerType
 }
 
 func getConcreteReflectValueAndType(in interface{}) (reflect.Value, reflect.Type) {
@@ -132,12 +136,18 @@ func getConcreteReflectValueAndType(in interface{}) (reflect.Value, reflect.Type
 	return value, value.Type()
 }
 
-var errorInterface = reflect.TypeOf((*error)(nil)).Elem()
-
-func isErrorType(outType reflect.Type) bool {
-	if outType.Kind() != reflect.Interface {
-		return false
+func getInnerField(outInner reflect.Value, outInnerWasPointer bool, index []int) (string, error) {
+	oi := outInner
+	if outInnerWasPointer {
+		if oi.IsNil() {
+			return "", nil
+		}
+		oi = outInner.Elem()
 	}
-
-	return outType.Implements(errorInterface)
+	// because pointers can be nil need to recurse one index at a time and perform nil check
+	if len(index) > 1 {
+		nextField := oi.Field(index[0])
+		return getInnerField(nextField, nextField.Kind() == reflect.Ptr, index[1:])
+	}
+	return getFieldAsString(oi.FieldByIndex(index))
 }

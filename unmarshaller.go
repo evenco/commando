@@ -1,117 +1,140 @@
-package gocsv
+package commando
 
 import (
-	"encoding/csv"
+	"errors"
 	"fmt"
+	"io"
 	"reflect"
 )
 
 // Unmarshaller is a CSV to struct unmarshaller.
 type Unmarshaller struct {
-	reader                 *csv.Reader
-	Headers                []string
-	fieldInfoMap           []*fieldInfo
-	MismatchedHeaders      []string
-	MismatchedStructFields []string
-	outType                reflect.Type
+	config *validConfig
+	line   int
+	reader Reader
 }
 
-// NewUnmarshaller creates an unmarshaller from a csv.Reader and a struct.
-func NewUnmarshaller(reader *csv.Reader, out interface{}) (*Unmarshaller, error) {
+// NewUnmarshaller is a convenience function which allocates and
+// returns a new Unmarshaller.
+func NewUnmarshaller(holder interface{}, reader Reader) (*Unmarshaller, error) {
+	return (&Config{Holder: holder}).NewUnmarshaller(reader)
+}
+
+// NewUnmarshaller creates an unmarshaller from a Reader and a struct.
+func (c *Config) NewUnmarshaller(reader Reader) (*Unmarshaller, error) {
 	headers, err := reader.Read()
 	if err != nil {
 		return nil, err
 	}
-	headers = normalizeHeaders(headers)
 
-	um := &Unmarshaller{reader: reader, outType: reflect.TypeOf(out)}
-	err = validate(um, out, headers)
+	vc, err := c.validate(headers)
 	if err != nil {
 		return nil, err
 	}
+
+	um := &Unmarshaller{
+		reader: reader,
+		config: vc,
+		line:   1,
+	}
+
 	return um, nil
 }
 
-// Read returns an interface{} whose runtime type is the same as the struct that
-// was used to create the Unmarshaller.
+// Read returns an interface{} whose runtime type is the same as the
+// struct that was used to create the Unmarshaller.
 func (um *Unmarshaller) Read() (interface{}, error) {
-	row, err := um.reader.Read()
-	if err != nil {
-		return nil, err
-	}
-	return um.unmarshalRow(row, nil)
+	value, _, err := um.ReadUnmatched()
+	return value, err
 }
 
-// ReadUnmatched is same as Read(), but returns a map of the columns that didn't match a field in the struct
+// ReadAll returns a slice of structs.
+func (um *Unmarshaller) ReadAll(onError func(err error) error) (interface{}, error) {
+	out := reflect.MakeSlice(reflect.SliceOf(um.config.outType), 0, 0)
+	err := um.ReadAllCallback(func(rec interface{}) error {
+		out = reflect.Append(out, reflect.ValueOf(rec))
+		return nil
+	}, onError)
+
+	return out.Interface(), err
+}
+
+// ReadAllCallback calls onSuccess for every record Read() from um.
+//
+// If Read() returns an error, it's passed to onError(), which decides
+// whether to continue processing or stop.  If onError() returns nil,
+// processing continues; if it returns an error, processing stops and
+// its error (not the one returned by Read()) is returned.
+//
+// If onSuccess() returns an error, processing stops and its error is
+// returned.
+func (um *Unmarshaller) ReadAllCallback(onSuccess func(interface{}) error, onError func(error) error) error {
+	for {
+		rec, err := um.Read()
+		if errors.Is(err, io.EOF) {
+			return nil
+		} else if err != nil {
+			if handlerErr := onError(err); handlerErr != nil {
+				return handlerErr
+			}
+		}
+
+		if err := onSuccess(rec); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// wrapLine wraps err, including the line the error occurred on.
+func wrapLine(err error, line int) error {
+	if err != nil {
+		return fmt.Errorf("on line %d: %w", line, err)
+	}
+	return err
+}
+
+// ReadUnmatched is same as Read(), but returns a map of the columns
+// that didn't match a field in the struct.
 func (um *Unmarshaller) ReadUnmatched() (interface{}, map[string]string, error) {
 	row, err := um.reader.Read()
 	if err != nil {
 		return nil, nil, err
 	}
-	unmatched := make(map[string]string)
-	value, err := um.unmarshalRow(row, unmatched)
-	return value, unmatched, err
+	out, unmatched, err := um.unmarshalRow(row)
+	if err != nil {
+		um.line++
+	}
+	return out, unmatched, wrapLine(err, um.line)
 }
 
-// validate ensures that a struct was used to create the Unmarshaller, and validates
-// CSV headers against the CSV tags in the struct.
-func validate(um *Unmarshaller, s interface{}, headers []string) error {
-	concreteType := reflect.TypeOf(s)
-	if concreteType.Kind() == reflect.Ptr {
-		concreteType = concreteType.Elem()
-	}
-	if err := ensureOutInnerType(concreteType); err != nil {
-		return err
-	}
-	structInfo := getStructInfo(concreteType) // Get struct info to get CSV annotations.
-	if len(structInfo.Fields) == 0 {
-		return ErrNoStructTags
-	}
-	csvHeadersLabels := make([]*fieldInfo, len(headers)) // Used to store the corresponding header <-> position in CSV
-	headerCount := map[string]int{}
-	for i, csvColumnHeader := range headers {
-		curHeaderCount := headerCount[csvColumnHeader]
-		if fieldInfo := getCSVFieldPosition(csvColumnHeader, structInfo, curHeaderCount); fieldInfo != nil {
-			csvHeadersLabels[i] = fieldInfo
-			if ShouldAlignDuplicateHeadersWithStructFieldOrder {
-				curHeaderCount++
-				headerCount[csvColumnHeader] = curHeaderCount
-			}
-		}
-	}
-
-	if FailIfDoubleHeaderNames {
-		if err := maybeDoubleHeaderNames(headers); err != nil {
-			return err
-		}
-	}
-
-	um.Headers = headers
-	um.fieldInfoMap = csvHeadersLabels
-	um.MismatchedHeaders = mismatchHeaderFields(structInfo.Fields, headers)
-	um.MismatchedStructFields = mismatchStructFields(structInfo.Fields, headers)
-	return nil
-}
-
-// unmarshalRow converts a CSV row to a struct, based on CSV struct tags.
-// If unmatched is non nil, it is populated with any columns that don't map to a struct field
-func (um *Unmarshaller) unmarshalRow(row []string, unmatched map[string]string) (interface{}, error) {
+// createNew allocates and returns a new holder to unmarshal data
+// into.
+func (um *Unmarshaller) createNew() (reflect.Value, bool) {
 	isPointer := false
-	concreteOutType := um.outType
-	if um.outType.Kind() == reflect.Ptr {
+	concreteOutType := um.config.outType
+	if um.config.outType.Kind() == reflect.Ptr {
 		isPointer = true
 		concreteOutType = concreteOutType.Elem()
 	}
 	outValue := createNewOutInner(isPointer, concreteOutType)
+	return outValue, isPointer
+}
+
+// unmarshalRow converts a CSV row to a struct, based on CSV struct
+// tags.
+func (um *Unmarshaller) unmarshalRow(row []string) (interface{}, map[string]string, error) {
+	unmatched := make(map[string]string)
+
+	outValue, isPointer := um.createNew()
+
 	for j, csvColumnContent := range row {
-		if j < len(um.fieldInfoMap) && um.fieldInfoMap[j] != nil {
-			fieldInfo := um.fieldInfoMap[j]
+		if j < len(um.config.fieldInfoMap) && um.config.fieldInfoMap[j] != nil {
+			fieldInfo := um.config.fieldInfoMap[j]
 			if err := setInnerField(&outValue, isPointer, fieldInfo.IndexChain, csvColumnContent, fieldInfo.omitEmpty); err != nil { // Set field of struct
-				return nil, fmt.Errorf("cannot assign field at %v to %s through index chain %v: %v", j, outValue.Type(), fieldInfo.IndexChain, err)
+				return nil, nil, fmt.Errorf("cannot assign field at %v to %T through index chain %v: %v", j, outValue, fieldInfo.IndexChain, err)
 			}
-		} else if unmatched != nil {
-			unmatched[um.Headers[j]] = csvColumnContent
 		}
 	}
-	return outValue.Interface(), nil
+	return outValue.Interface(), unmatched, nil
 }

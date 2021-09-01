@@ -1,17 +1,12 @@
-Go CSV
-=====
+Commando, a CSV library for Go
+==============================
 
-The GoCSV package aims to provide easy serialization and deserialization functions to use CSV in Golang
-
-API and techniques inspired from https://godoc.org/gopkg.in/mgo.v2
-
-[![GoDoc](https://godoc.org/github.com/gocarina/gocsv?status.png)](https://godoc.org/github.com/gocarina/gocsv)
-[![Build Status](https://travis-ci.org/gocarina/gocsv.svg?branch=master)](https://travis-ci.org/gocarina/gocsv)
+The Commando package aims to provide easy marshalling and unmarshalling of CSV in Go.  It’s a fork of [gocarina/gocsv](https://github.com/gocarina/gocsv), with a simplified API.
 
 Installation
 =====
 
-```go get -u github.com/gocarina/gocsv```
+```go get -u github.com/evenco/commando```
 
 Full example
 =====
@@ -38,7 +33,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/gocarina/gocsv"
+	"github.com/evenco/commando"
 )
 
 type Client struct { // Our example struct, you can use "-" to ignore a field
@@ -57,7 +52,19 @@ func main() {
 
 	clients := []*Client{}
 
-	if err := gocsv.UnmarshalFile(clientsFile, &clients); err != nil { // Load clients from file
+    // Create an Unmarshaller which deserializes into *Client{}
+    unmarshaller, err := commando.NewUnmarshaller(&Client{}, csv.NewReader(clientsFile))
+    if err != nil {
+        panic(err)
+    }
+
+    // Read everything, accumulating in clients
+    err = commando.ReadAllCallback(um, func(record interface{}) error {
+        clients = append(clients, record.(*Client))
+        return nil
+    })
+
+	if err != nil {
 		panic(err)
 	}
 	for _, client := range clients {
@@ -72,13 +79,18 @@ func main() {
 	clients = append(clients, &Client{Id: "13", Name: "Fred"})
 	clients = append(clients, &Client{Id: "14", Name: "James", Age: "32"})
 	clients = append(clients, &Client{Id: "15", Name: "Danny"})
-	csvContent, err := gocsv.MarshalString(&clients) // Get all clients as CSV string
-	//err = gocsv.MarshalFile(&clients, clientsFile) // Use this to save the CSV back to the file
-	if err != nil {
+
+    // Initialize Marshaller for *Client{} structs
+    marshaller, err := commando.NewMarshaller(&Client{}, csv.NewWriter(clientsFile))
+    if err != nil {
 		panic(err)
 	}
-	fmt.Println(csvContent) // Display all clients as CSV string
 
+    for _, client := range clients {
+        if err := marshaller.Write(client); err != nil {
+            panic(err)
+        }
+    }
 }
 
 ```
@@ -112,57 +124,6 @@ type Client struct { // Our example struct with a custom type (DateTime)
 	Id       string   `csv:"id"`
 	Name     string   `csv:"name"`
 	Employed DateTime `csv:"employed"`
-}
-
-```
-
-Customizable CSV Reader / Writer
----
-
-```go
-
-func main() {
-        ...
-	
-        gocsv.SetCSVReader(func(in io.Reader) gocsv.CSVReader {
-            r := csv.NewReader(in)
-            r.Comma = '|'
-            return r // Allows use pipe as delimiter
-        })	
-	
-        ...
-	
-        gocsv.SetCSVReader(func(in io.Reader) gocsv.CSVReader {
-            r := csv.NewReader(in)
-            r.LazyQuotes = true
-            r.Comma = '.'
-            return r // Allows use dot as delimiter and use quotes in CSV
-        })
-	
-        ...
-	
-        gocsv.SetCSVReader(func(in io.Reader) gocsv.CSVReader {
-            //return csv.NewReader(in)
-            return gocsv.LazyCSVReader(in) // Allows use of quotes in CSV
-        })
-
-        ...
-
-        gocsv.UnmarshalFile(file, &clients)
-
-        ...
-
-        gocsv.SetCSVWriter(func(out io.Writer) *SafeCSVWriter {
-            writer := csv.NewWriter(out)
-            writer.Comma = '|'
-            return gocsv.NewSafeCSVWriter(writer)
-        })
-
-        ...
-
-        gocsv.MarshalFile(&clients, file)
-
-        ...
 }
 
 ```
