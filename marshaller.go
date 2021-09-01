@@ -42,22 +42,49 @@ func (m *Marshaller) writeHeaders() error {
 }
 
 func (m *Marshaller) Write(record interface{}) error {
+	if reflect.TypeOf(record) != m.config.outType {
+		return fmt.Errorf("Expected %q, but got %q", m.config.outType, reflect.TypeOf(record))
+	}
 
 	inValue, inType := getConcreteReflectValueAndType(record) // Get the concrete type
-	if err := ensureStructOrPtr(inType); err != nil {
-		return err
-	}
 	inInnerWasPointer := inType.Kind() == reflect.Ptr
 
 	csvHeadersLabels := make([]string, len(m.config.structInfo.Fields))
-	for j, fieldInfo := range m.config.structInfo.Fields {
+	for i, fieldInfo := range m.config.structInfo.Fields {
 		inInnerFieldValue, err := getInnerField(inValue, inInnerWasPointer, fieldInfo.IndexChain) // Get the correct field header <-> position
 		if err != nil {
 			return err
 		}
-		csvHeadersLabels[j] = inInnerFieldValue
+		csvHeadersLabels[i] = inInnerFieldValue
 	}
 	return m.writer.Write(csvHeadersLabels)
+}
+
+// WriteAll writes every element of values as CSV.
+//
+// values must be a slice of elements of the configured Holder for
+// this Marshaller.
+//
+// Flush() must be called when writing is complete.
+func (m *Marshaller) WriteAll(values interface{}) error {
+	v := reflect.ValueOf(values)
+	if v.Kind() == reflect.Ptr {
+		v = v.Elem()
+	}
+
+	if v.Type() != reflect.SliceOf(m.config.outType) {
+		return fmt.Errorf("Expected []%T, but got %T", m.config.outType, values)
+	}
+
+	n := v.Len()
+	for i := 0; i < n; i++ {
+		sv := v.Index(i).Interface()
+		if err := m.Write(sv); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (m *Marshaller) Flush() error {

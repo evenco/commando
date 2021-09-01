@@ -51,7 +51,7 @@ func (um *Unmarshaller) Read() (interface{}, error) {
 // ReadAll returns a slice of structs.
 func (um *Unmarshaller) ReadAll(onError func(err error) error) (interface{}, error) {
 	out := reflect.MakeSlice(reflect.SliceOf(um.config.outType), 0, 0)
-	err := ReadAllCallback(um, func(rec interface{}) error {
+	err := um.ReadAllCallback(func(rec interface{}) error {
 		out = reflect.Append(out, reflect.ValueOf(rec))
 		return nil
 	}, onError)
@@ -59,8 +59,16 @@ func (um *Unmarshaller) ReadAll(onError func(err error) error) (interface{}, err
 	return out.Interface(), err
 }
 
-// ReadAllCallback calls cb for every record Read() from um.
-func ReadAllCallback(um *Unmarshaller, onSuccess func(interface{}) error, onError func(error) error) error {
+// ReadAllCallback calls onSuccess for every record Read() from um.
+//
+// If Read() returns an error, it's passed to onError(), which decides
+// whether to continue processing or stop.  If onError() returns nil,
+// processing continues; if it returns an error, processing stops and
+// its error (not the one returned by Read()) is returned.
+//
+// If onSuccess() returns an error, processing stops and its error is
+// returned.
+func (um *Unmarshaller) ReadAllCallback(onSuccess func(interface{}) error, onError func(error) error) error {
 	for {
 		rec, err := um.Read()
 		if errors.Is(err, io.EOF) {

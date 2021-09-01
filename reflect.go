@@ -1,7 +1,6 @@
 package commando
 
 import (
-	"fmt"
 	"reflect"
 	"strings"
 	"sync"
@@ -135,16 +134,6 @@ func getConcreteReflectValueAndType(in interface{}) (reflect.Value, reflect.Type
 		value = value.Elem()
 	}
 	return value, value.Type()
-}
-
-func ensureStructOrPtr(t reflect.Type) error {
-	switch t.Kind() {
-	case reflect.Struct:
-		fallthrough
-	case reflect.Ptr:
-		return nil
-	}
-	return fmt.Errorf("cannot use %q, only slice or array supported", t)
 }
 
 func getInnerField(outInner reflect.Value, outInnerWasPointer bool, index []int) (string, error) {
