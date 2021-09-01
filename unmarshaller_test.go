@@ -1,6 +1,7 @@
 package commando
 
 import (
+	"context"
 	"encoding/csv"
 	"io"
 	"strings"
@@ -50,6 +51,7 @@ c,d,e
 func Test_ReadAll(t *testing.T) {
     t.Parallel()
 
+	ctx := context.Background()
 	type sample struct {
 		FieldA string `csv:"field_a"`
 		FieldB string `csv:"field_b"`
@@ -64,7 +66,7 @@ c,d
 		t.Fatalf("Failed to allocate Unmarshaller: %s", err.Error())
 	}
 
-	out, err := um.ReadAll(StopOnError)
+	out, err := um.ReadAll(ctx, StopOnError)
 	if err != nil {
 		t.Fatalf("Failed to allocate ReadAll(): %s", err.Error())
 	}
@@ -84,7 +86,7 @@ c,d
 		t.Fatalf("Failed to allocate Unmarshaller: %s", err.Error())
 	}
 
-	out, err = um.ReadAll(StopOnError)
+	out, err = um.ReadAll(ctx, StopOnError)
 	if err != nil {
 		t.Fatalf("Failed to allocate ReadAll(): %s", err.Error())
 	}

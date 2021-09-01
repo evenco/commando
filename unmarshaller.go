@@ -1,6 +1,7 @@
 package commando
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -49,9 +50,9 @@ func (um *Unmarshaller) Read() (interface{}, error) {
 }
 
 // ReadAll returns a slice of structs.
-func (um *Unmarshaller) ReadAll(onError func(err error) error) (interface{}, error) {
+func (um *Unmarshaller) ReadAll(ctx context.Context, onError func(ctx context.Context, err error) error) (interface{}, error) {
 	out := reflect.MakeSlice(reflect.SliceOf(um.config.outType), 0, 0)
-	err := um.ReadAllCallback(func(rec interface{}) error {
+	err := um.ReadAllCallback(ctx, func(_ context.Context, rec interface{}) error {
 		out = reflect.Append(out, reflect.ValueOf(rec))
 		return nil
 	}, onError)
@@ -68,18 +69,20 @@ func (um *Unmarshaller) ReadAll(onError func(err error) error) (interface{}, err
 //
 // If onSuccess() returns an error, processing stops and its error is
 // returned.
-func (um *Unmarshaller) ReadAllCallback(onSuccess func(interface{}) error, onError func(error) error) error {
+func (um *Unmarshaller) ReadAllCallback(ctx context.Context,
+	onSuccess func(context.Context, interface{}) error,
+	onError func(context.Context, error) error) error {
 	for {
 		rec, err := um.Read()
 		if errors.Is(err, io.EOF) {
 			return nil
 		} else if err != nil {
-			if handlerErr := onError(err); handlerErr != nil {
+			if handlerErr := onError(ctx, err); handlerErr != nil {
 				return handlerErr
 			}
 		}
 
-		if err := onSuccess(rec); err != nil {
+		if err := onSuccess(ctx, rec); err != nil {
 			return err
 		}
 	}
