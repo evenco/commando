@@ -98,4 +98,33 @@ c,d
 	default:
 		t.Fatalf("Expected []sample, but got %T", out)
 	}
+
+	// Handling errors
+
+	ignoreErrors := func(_ context.Context, _ error) error {
+		return nil
+	}
+
+	brokenCSV := csvContents + `e,f,g
+h,i,j
+k,l
+`
+
+	um, err = NewUnmarshaller(&sample{}, csv.NewReader(strings.NewReader(brokenCSV)))
+	if err != nil {
+		t.Fatalf("Failed to allocate Unmarshaller: %s", err.Error())
+	}
+
+	out, err = um.ReadAll(ctx, ignoreErrors)
+	if err != nil {
+		t.Fatalf("Failed to allocate ReadAll(): %s", err.Error())
+	}
+	switch samples := out.(type) {
+	case []*sample:
+		if len(samples) != 3 {
+			t.Fatalf("Expected length 2, but got: %v", samples)
+		}
+	default:
+		t.Fatalf("Expected []sample, but got %T", out)
+	}
 }

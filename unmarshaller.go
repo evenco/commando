@@ -80,6 +80,8 @@ func (um *Unmarshaller) ReadAllCallback(ctx context.Context,
 			if handlerErr := onError(ctx, err); handlerErr != nil {
 				return handlerErr
 			}
+
+			continue
 		}
 
 		if err := onSuccess(ctx, rec); err != nil {
