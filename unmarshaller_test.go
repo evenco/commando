@@ -8,17 +8,29 @@ import (
 	"testing"
 )
 
+const (
+	csvContents = `field_a,field_b
+a,b
+c,d
+`
+
+	brokenCSV = csvContents + `e,f,g
+h,i,j
+k,l
+`
+)
+
+type sample struct {
+	FieldA string `csv:"field_a"`
+	FieldB string `csv:"field_b"`
+}
+
 func TestUnmarshallerLongRow(t *testing.T) {
-	type sample struct {
-		FieldA string `csv:"field_a"`
-		FieldB string `csv:"field_b"`
-	}
-	const csvContents = `field_a,field_b
+	csvText := `field_a,field_b
 a,b
 c,d,e
 `
-
-	reader := csv.NewReader(strings.NewReader(csvContents))
+	reader := csv.NewReader(strings.NewReader(csvText))
 	reader.FieldsPerRecord = -1
 	c := &Config{Holder: sample{}}
 	um, err := c.NewUnmarshaller(reader)
@@ -48,18 +60,39 @@ c,d,e
 	}
 }
 
+func Test_Read_ErrorLineNumbers(t *testing.T) {
+    t.Parallel()
+
+	um, err := NewUnmarshaller(sample{}, csv.NewReader(strings.NewReader(brokenCSV)))
+	if err != nil {
+		t.Fatalf("Failed to allocate Unmarshaller: %s", err.Error())
+	}
+
+
+	// Lines 4 & 5 have errors.
+
+	var rec interface{}
+	// Header is line 1
+	_, err = um.Read()			// line 2
+	_, err = um.Read()			// line 3
+	_, err = um.Read()			// line 4
+
+	// Line 5 has the first error
+	rec, err = um.Read()
+	if err == nil {
+		t.Fatal("Expected error")
+	} else if strings.Index(err.Error(), "line 5") == -1 {
+		t.Fatal("Expected the error to mention line 5")
+	}
+	if rec != nil {
+		t.Fatal("Expected no record")
+	}
+}
+
 func Test_ReadAll(t *testing.T) {
     t.Parallel()
 
 	ctx := context.Background()
-	type sample struct {
-		FieldA string `csv:"field_a"`
-		FieldB string `csv:"field_b"`
-	}
-	const csvContents = `field_a,field_b
-a,b
-c,d
-`
 
 	um, err := NewUnmarshaller(sample{}, csv.NewReader(strings.NewReader(csvContents)))
 	if err != nil {
@@ -68,7 +101,7 @@ c,d
 
 	out, err := um.ReadAll(ctx, StopOnError)
 	if err != nil {
-		t.Fatalf("Failed to allocate ReadAll(): %s", err.Error())
+		t.Fatalf("Failed to ReadAll(): %s", err.Error())
 	}
 	switch samples := out.(type) {
 	case []sample:
@@ -104,11 +137,6 @@ c,d
 	ignoreErrors := func(_ context.Context, _ error) error {
 		return nil
 	}
-
-	brokenCSV := csvContents + `e,f,g
-h,i,j
-k,l
-`
 
 	um, err = NewUnmarshaller(&sample{}, csv.NewReader(strings.NewReader(brokenCSV)))
 	if err != nil {
