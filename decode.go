@@ -57,14 +57,6 @@ func mismatchHeaderFields(structInfo []fieldInfo, headers []string) []string {
 	return missing
 }
 
-func maybeMissingStructFields(structInfo []fieldInfo, headers []string) error {
-	missing := mismatchStructFields(structInfo, headers)
-	if len(missing) != 0 {
-		return fmt.Errorf("found unmatched struct field with tags %v", missing)
-	}
-	return nil
-}
-
 // Check that no header name is repeated twice
 func maybeDoubleHeaderNames(headers []string) error {
 	headerMap := make(map[string]bool, len(headers))

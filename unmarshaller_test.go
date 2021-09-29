@@ -156,3 +156,78 @@ func Test_ReadAll(t *testing.T) {
 		t.Fatalf("Expected []sample, but got %T", out)
 	}
 }
+
+func Test_Unmarshaller_Allocation(t *testing.T) {
+    t.Parallel()
+
+	exactHeaders := `field_a,field_b`
+	overlappingHeaders := `field_b,field_c`
+	disjointHeaders := `field_c,field_d`
+
+	var um *Unmarshaller
+	var err error
+	config := &Config{
+		Holder: sample{},
+	}
+
+	// An Unmarshaller should be returned if the file headers match the struct.
+	um, err = config.NewUnmarshaller(csv.NewReader(strings.NewReader(exactHeaders)))
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+	if um == nil {
+		t.Fatal("Expected Unmarshaller")
+	}
+
+	// Same behavior if FailIfUnmatchedStructTags is set.
+	config.FailIfUnmatchedStructTags = true
+	um, err = config.NewUnmarshaller(csv.NewReader(strings.NewReader(exactHeaders)))
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+	if um == nil {
+		t.Fatal("Expected Unmarshaller")
+	}
+
+	// An Unmarshaller should be returned if a *subset* of the file
+	// headers match the struct, and FailIfUnmatchedStructTags = false
+	config.FailIfUnmatchedStructTags = false
+	um, err = config.NewUnmarshaller(csv.NewReader(strings.NewReader(overlappingHeaders)))
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+	if um == nil {
+		t.Fatal("Expected Unmarshaller")
+	}
+
+	// An error should be returned if *any* fields don't match and
+	// FailIfUnmatchedStructTags = true.
+	config.FailIfUnmatchedStructTags = true
+	um, err = config.NewUnmarshaller(csv.NewReader(strings.NewReader(overlappingHeaders)))
+	if err == nil {
+		t.Fatal("Expected error")
+	}
+	if um != nil {
+		t.Fatal("Expected no Unmarshaller")
+	}
+
+	// An error should be returned if none of the file headers match
+	// the struct, no matter what FailIfUnmatchedStructTags is set to
+	config.FailIfUnmatchedStructTags = false
+	um, err = config.NewUnmarshaller(csv.NewReader(strings.NewReader(disjointHeaders)))
+	if err == nil {
+		t.Fatalf("Expected error")
+	}
+	if um != nil {
+		t.Fatal("Expected no Unmarshaller")
+	}
+
+	config.FailIfUnmatchedStructTags = true
+	um, err = config.NewUnmarshaller(csv.NewReader(strings.NewReader(disjointHeaders)))
+	if err == nil {
+		t.Fatalf("Expected error")
+	}
+	if um != nil {
+		t.Fatal("Expected no Unmarshaller")
+	}
+}

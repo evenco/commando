@@ -45,8 +45,15 @@ func (c *Config) NewUnmarshaller(reader Reader) (*Unmarshaller, error) {
 // Read returns an interface{} whose runtime type is the same as the
 // struct that was used to create the Unmarshaller.
 func (um *Unmarshaller) Read() (interface{}, error) {
-	value, _, err := um.ReadUnmatched()
-	return value, err
+	row, err := um.reader.Read()
+	if err != nil {
+		return nil, err
+	}
+	out, err := um.unmarshalRow(row)
+	if err != nil {
+		um.line++
+	}
+	return out, wrapLine(err, um.line)
 }
 
 // ReadAll returns a slice of structs.
@@ -71,7 +78,8 @@ func (um *Unmarshaller) ReadAll(ctx context.Context, onError func(ctx context.Co
 // returned.
 func (um *Unmarshaller) ReadAllCallback(ctx context.Context,
 	onSuccess func(context.Context, interface{}) error,
-	onError func(context.Context, error) error) error {
+	onError func(context.Context, error) error,
+) error {
 	for {
 		rec, err := um.Read()
 		if errors.Is(err, io.EOF) {
@@ -99,20 +107,6 @@ func wrapLine(err error, line int) error {
 	return err
 }
 
-// ReadUnmatched is same as Read(), but returns a map of the columns
-// that didn't match a field in the struct.
-func (um *Unmarshaller) ReadUnmatched() (interface{}, map[string]string, error) {
-	row, err := um.reader.Read()
-	if err != nil {
-		return nil, nil, err
-	}
-	out, unmatched, err := um.unmarshalRow(row)
-	if err != nil {
-		um.line++
-	}
-	return out, unmatched, wrapLine(err, um.line)
-}
-
 // createNew allocates and returns a new holder to unmarshal data
 // into.
 func (um *Unmarshaller) createNew() (reflect.Value, bool) {
@@ -128,18 +122,16 @@ func (um *Unmarshaller) createNew() (reflect.Value, bool) {
 
 // unmarshalRow converts a CSV row to a struct, based on CSV struct
 // tags.
-func (um *Unmarshaller) unmarshalRow(row []string) (interface{}, map[string]string, error) {
-	unmatched := make(map[string]string)
-
+func (um *Unmarshaller) unmarshalRow(row []string) (interface{}, error) {
 	outValue, isPointer := um.createNew()
 
 	for j, csvColumnContent := range row {
 		if j < len(um.config.fieldInfoMap) && um.config.fieldInfoMap[j] != nil {
 			fieldInfo := um.config.fieldInfoMap[j]
 			if err := setInnerField(&outValue, isPointer, fieldInfo.IndexChain, csvColumnContent, fieldInfo.omitEmpty); err != nil { // Set field of struct
-				return nil, nil, fmt.Errorf("cannot assign field at %v to %T through index chain %v: %v", j, outValue, fieldInfo.IndexChain, err)
+				return nil, fmt.Errorf("cannot assign field at %v to %T through index chain %v: %v", j, outValue, fieldInfo.IndexChain, err)
 			}
 		}
 	}
-	return outValue.Interface(), unmatched, nil
+	return outValue.Interface(), nil
 }

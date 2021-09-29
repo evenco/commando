@@ -1,6 +1,7 @@
 package commando
 
 import (
+	"fmt"
 	"reflect"
 )
 
@@ -57,9 +58,17 @@ func (c *Config) validate(headers []string) (*validConfig, error) {
 		}
 	}
 
+	mismatchedHeaders := mismatchHeaderFields(structInfo.Fields, headers)
+	mismatchedStructFields := mismatchStructFields(structInfo.Fields, headers)
+
+	// If none of the headers match the struct, return an error.
+	if len(headers) > 0 && len(mismatchedHeaders) == len(headers) {
+		return nil, fmt.Errorf("expected one or more of headers %v, but got %v ", structInfo.headers(), mismatchedHeaders)
+	}
+
 	if c.FailIfUnmatchedStructTags {
-		if err := maybeMissingStructFields(structInfo.Fields, headers); err != nil {
-			return nil, err
+		if len(mismatchedStructFields) != 0 {
+			return nil, fmt.Errorf("found unmatched struct field with tags %v", mismatchedStructFields)
 		}
 	}
 
@@ -75,8 +84,6 @@ func (c *Config) validate(headers []string) (*validConfig, error) {
 		headers:                headers,
 		structInfo:             structInfo,
 		fieldInfoMap:           csvHeadersLabels,
-		mismatchedHeaders:      mismatchHeaderFields(structInfo.Fields, headers),
-		mismatchedStructFields: mismatchStructFields(structInfo.Fields, headers),
 	}, nil
 }
 
@@ -92,6 +99,4 @@ type validConfig struct {
 
 	structInfo             *structInfo
 	fieldInfoMap           []*fieldInfo
-	mismatchedHeaders      []string
-	mismatchedStructFields []string
 }
