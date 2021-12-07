@@ -64,7 +64,9 @@ func Test_Read_ErrorLineNumbers(t *testing.T) {
 	var rec interface{}
 	// Header is line 1
 	_, err = um.Read() // line 2
+	assert.NoError(t, err)
 	_, err = um.Read() // line 3
+	assert.NoError(t, err)
 
 	// Line 4 has the first error
 	rec, err = um.Read()
