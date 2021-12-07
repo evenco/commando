@@ -49,10 +49,8 @@ func (um *Unmarshaller) Read() (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
+	um.line++
 	out, err := um.unmarshalRow(row)
-	if err != nil {
-		um.line++
-	}
 	return out, wrapLine(err, um.line)
 }
 
