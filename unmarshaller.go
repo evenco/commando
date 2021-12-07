@@ -36,7 +36,8 @@ func (c *Config) NewUnmarshaller(reader Reader) (*Unmarshaller, error) {
 	um := &Unmarshaller{
 		reader: reader,
 		config: vc,
-		line:   1,
+		// Start at L1 because reader.Read() was called for headers.
+		line: 1,
 	}
 
 	return um, nil
@@ -49,10 +50,8 @@ func (um *Unmarshaller) Read() (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
+	um.line++
 	out, err := um.unmarshalRow(row)
-	if err != nil {
-		um.line++
-	}
 	return out, wrapLine(err, um.line)
 }
 
@@ -129,7 +128,7 @@ func (um *Unmarshaller) unmarshalRow(row []string) (interface{}, error) {
 		if j < len(um.config.fieldInfoMap) && um.config.fieldInfoMap[j] != nil {
 			fieldInfo := um.config.fieldInfoMap[j]
 			if err := setInnerField(&outValue, isPointer, fieldInfo.IndexChain, csvColumnContent, fieldInfo.omitEmpty); err != nil { // Set field of struct
-				return nil, fmt.Errorf("cannot assign field at %v to %T through index chain %v: %v", j, outValue, fieldInfo.IndexChain, err)
+				return nil, fmt.Errorf("cannot assign field %q at index %v through index chain %v: %v", um.config.headers[j], j, fieldInfo.IndexChain, err)
 			}
 		}
 	}

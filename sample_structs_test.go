@@ -1,8 +1,9 @@
 package commando
 
 import (
+	"strconv"
 	"time"
-	"strconv")
+)
 
 type Sample struct {
 	Foo  string  `csv:"foo"`

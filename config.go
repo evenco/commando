@@ -79,11 +79,11 @@ func (c *Config) validate(headers []string) (*validConfig, error) {
 	}
 
 	return &validConfig{
-		Config:                 *c,
-		outType:                reflect.TypeOf(c.Holder),
-		headers:                headers,
-		structInfo:             structInfo,
-		fieldInfoMap:           csvHeadersLabels,
+		Config:       *c,
+		outType:      reflect.TypeOf(c.Holder),
+		headers:      headers,
+		structInfo:   structInfo,
+		fieldInfoMap: csvHeadersLabels,
 	}, nil
 }
 
@@ -97,6 +97,6 @@ type validConfig struct {
 	// headers is a slice of header names in file order.
 	headers []string
 
-	structInfo             *structInfo
-	fieldInfoMap           []*fieldInfo
+	structInfo   *structInfo
+	fieldInfoMap []*fieldInfo
 }

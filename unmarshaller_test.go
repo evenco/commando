@@ -3,9 +3,13 @@ package commando
 import (
 	"context"
 	"encoding/csv"
+	"fmt"
 	"io"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -17,6 +21,7 @@ c,d
 	brokenCSV = csvContents + `e,f,g
 h,i,j
 k,l
+m,n,o
 `
 )
 
@@ -34,102 +39,140 @@ c,d,e
 	reader.FieldsPerRecord = -1
 	c := &Config{Holder: sample{}}
 	um, err := c.NewUnmarshaller(reader)
-	if err != nil {
-		t.Fatalf("Error calling NewUnmarshaller: %#v", err)
-	}
+	require.NoError(t, err)
 
 	obj, err := um.Read()
-	if err != nil {
-		t.Fatalf("Error calling Read(): %#v", err)
-	}
-	if obj.(sample).FieldA != "a" || obj.(sample).FieldB != "b" {
-		t.Fatalf("Unepxected result from Read(): %#v", obj)
-	}
+	require.NoError(t, err)
+	assert.Equal(t, sample{"a", "b"}, obj, "Unexpected result from Read()")
 
 	obj, err = um.Read()
-	if err != nil {
-		t.Fatalf("Error calling Read(): %#v", err)
-	}
-	if obj.(sample).FieldA != "c" || obj.(sample).FieldB != "d" {
-		t.Fatalf("Unepxected result from Read(): %#v", obj)
-	}
+	require.NoError(t, err)
+	assert.Equal(t, sample{"c", "d"}, obj, "Unexpected result from Read()")
 
 	obj, err = um.Read()
-	if err != io.EOF {
-		t.Fatalf("Unepxected result from Read(): (%#v, %#v)", obj, err)
-	}
+	require.Equal(t, io.EOF, err, "Expected io.EOF")
 }
 
 func Test_Read_ErrorLineNumbers(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 
 	um, err := NewUnmarshaller(sample{}, csv.NewReader(strings.NewReader(brokenCSV)))
-	if err != nil {
-		t.Fatalf("Failed to allocate Unmarshaller: %s", err.Error())
-	}
-
+	require.NoError(t, err)
 
 	// Lines 4 & 5 have errors.
 
 	var rec interface{}
 	// Header is line 1
-	_, err = um.Read()			// line 2
-	_, err = um.Read()			// line 3
-	_, err = um.Read()			// line 4
+	_, err = um.Read() // line 2
+	assert.NoError(t, err)
+	_, err = um.Read() // line 3
+	assert.NoError(t, err)
 
-	// Line 5 has the first error
+	// Line 4 has the first error
 	rec, err = um.Read()
-	if err == nil {
-		t.Fatal("Expected error")
-	} else if strings.Index(err.Error(), "line 5") == -1 {
-		t.Fatal("Expected the error to mention line 5")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "line 4", "Expected the error to mention line number")
+	assert.Nil(t, rec, "Expected no record")
+
+	// Line 5 is also broken
+	rec, err = um.Read()
+	require.Error(t, err, "Expected error")
+	assert.Contains(t, err.Error(), "line 5", "Expected the error to mention line number")
+	assert.Nil(t, rec, "Expected no record")
+
+	// Line 6 is good
+	rec, err = um.Read()
+	require.NoError(t, err, "Expected no error")
+	require.Equal(t, sample{"k", "l"}, rec)
+
+	// Line 7 is broken again
+	rec, err = um.Read()
+	require.Error(t, err, "Expected error")
+	assert.Contains(t, err.Error(), "line 7", "Expected the error to mention line number")
+	assert.Nil(t, rec, "Expected no record")
+}
+
+func Test_ReadAll_ErrorLineNumbers(t *testing.T) {
+	t.Parallel()
+
+	type sample2 struct {
+		A float64 `csv:"a"`
+		B string  `csv:"b"`
 	}
-	if rec != nil {
-		t.Fatal("Expected no record")
+
+	brokenCSV := `a,b
+1.0,a
+2.0-,b
+3.3,c
+`
+
+	ctx := context.Background()
+	um, err := NewUnmarshaller(sample2{}, csv.NewReader(strings.NewReader(brokenCSV)))
+	require.NoError(t, err, "Failed to allocate Unmarshaller")
+
+	_, err = um.ReadAll(ctx, StopOnError)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "line 3", "Expected the error to mention line number")
+}
+
+func Test_ReadAll_LogErrorLineNumbers(t *testing.T) {
+	t.Parallel()
+
+	var errs []error
+	logError := func(_ context.Context, err error) error {
+		errs = append(errs, err)
+		return nil
 	}
+
+	ctx := context.Background()
+	um, err := NewUnmarshaller(sample{}, csv.NewReader(strings.NewReader(brokenCSV)))
+	require.NoError(t, err)
+
+	out, err := um.ReadAll(ctx, logError)
+	require.NoError(t, err)
+	expected := []sample{
+		{"a", "b"},
+		{"c", "d"},
+		{"k", "l"},
+	}
+	require.Equal(t, expected, out)
+
+	assert.Len(t, errs, 3)
+	assert.Contains(t, errs[0].Error(), "line 4")
+	assert.Contains(t, errs[1].Error(), "line 5")
+	assert.Contains(t, errs[2].Error(), "line 7")
 }
 
 func Test_ReadAll(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 
 	ctx := context.Background()
 
 	um, err := NewUnmarshaller(sample{}, csv.NewReader(strings.NewReader(csvContents)))
-	if err != nil {
-		t.Fatalf("Failed to allocate Unmarshaller: %s", err.Error())
-	}
+	require.NoError(t, err)
 
 	out, err := um.ReadAll(ctx, StopOnError)
-	if err != nil {
-		t.Fatalf("Failed to ReadAll(): %s", err.Error())
-	}
+	require.NoError(t, err)
+
 	switch samples := out.(type) {
 	case []sample:
-		if len(samples) != 2 {
-			t.Fatalf("Expected length 2, but got: %v", samples)
-		}
+		assert.Len(t, samples, 2)
 	default:
-		t.Fatalf("Expected []sample, but got %T", out)
+		assert.Fail(t, fmt.Sprintf("Expected []sample, but got %T", out))
 	}
 
 	// With pointers
 
 	um, err = NewUnmarshaller(&sample{}, csv.NewReader(strings.NewReader(csvContents)))
-	if err != nil {
-		t.Fatalf("Failed to allocate Unmarshaller: %s", err.Error())
-	}
+	require.NoError(t, err)
 
 	out, err = um.ReadAll(ctx, StopOnError)
-	if err != nil {
-		t.Fatalf("Failed to allocate ReadAll(): %s", err.Error())
-	}
+	require.NoError(t, err)
 	switch samples := out.(type) {
 	case []*sample:
-		if len(samples) != 2 {
-			t.Fatalf("Expected length 2, but got: %v", samples)
-		}
+		assert.Len(t, samples, 2)
 	default:
-		t.Fatalf("Expected []sample, but got %T", out)
+		assert.Fail(t, fmt.Sprintf("Expected []sample, but got %T", out))
 	}
 
 	// Handling errors
@@ -139,26 +182,20 @@ func Test_ReadAll(t *testing.T) {
 	}
 
 	um, err = NewUnmarshaller(&sample{}, csv.NewReader(strings.NewReader(brokenCSV)))
-	if err != nil {
-		t.Fatalf("Failed to allocate Unmarshaller: %s", err.Error())
-	}
+	require.NoError(t, err)
 
 	out, err = um.ReadAll(ctx, ignoreErrors)
-	if err != nil {
-		t.Fatalf("Failed to allocate ReadAll(): %s", err.Error())
-	}
+	require.NoError(t, err)
 	switch samples := out.(type) {
 	case []*sample:
-		if len(samples) != 3 {
-			t.Fatalf("Expected length 2, but got: %v", samples)
-		}
+		assert.Len(t, samples, 3)
 	default:
-		t.Fatalf("Expected []sample, but got %T", out)
+		assert.Fail(t, fmt.Sprintf("Expected []sample, but got %T", out))
 	}
 }
 
 func Test_Unmarshaller_Allocation(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 
 	exactHeaders := `field_a,field_b`
 	overlappingHeaders := `field_b,field_c`
@@ -172,62 +209,38 @@ func Test_Unmarshaller_Allocation(t *testing.T) {
 
 	// An Unmarshaller should be returned if the file headers match the struct.
 	um, err = config.NewUnmarshaller(csv.NewReader(strings.NewReader(exactHeaders)))
-	if err != nil {
-		t.Fatalf("Unexpected error: %v", err)
-	}
-	if um == nil {
-		t.Fatal("Expected Unmarshaller")
-	}
+	require.NoError(t, err, "Unexpected error")
+	require.NotNil(t, um, "Expected Unmarshaller")
 
 	// Same behavior if FailIfUnmatchedStructTags is set.
 	config.FailIfUnmatchedStructTags = true
 	um, err = config.NewUnmarshaller(csv.NewReader(strings.NewReader(exactHeaders)))
-	if err != nil {
-		t.Fatalf("Unexpected error: %v", err)
-	}
-	if um == nil {
-		t.Fatal("Expected Unmarshaller")
-	}
+	require.NoError(t, err, "Unexpected error")
+	require.NotNil(t, um, "Expected Unmarshaller")
 
 	// An Unmarshaller should be returned if a *subset* of the file
 	// headers match the struct, and FailIfUnmatchedStructTags = false
 	config.FailIfUnmatchedStructTags = false
 	um, err = config.NewUnmarshaller(csv.NewReader(strings.NewReader(overlappingHeaders)))
-	if err != nil {
-		t.Fatalf("Unexpected error: %v", err)
-	}
-	if um == nil {
-		t.Fatal("Expected Unmarshaller")
-	}
+	require.NoError(t, err, "Unexpected error")
+	require.NotNil(t, um, "Expected Unmarshaller")
 
 	// An error should be returned if *any* fields don't match and
 	// FailIfUnmatchedStructTags = true.
 	config.FailIfUnmatchedStructTags = true
 	um, err = config.NewUnmarshaller(csv.NewReader(strings.NewReader(overlappingHeaders)))
-	if err == nil {
-		t.Fatal("Expected error")
-	}
-	if um != nil {
-		t.Fatal("Expected no Unmarshaller")
-	}
+	require.Error(t, err, "Expected error")
+	require.Nil(t, um, "Expected no Unmarshaller")
 
 	// An error should be returned if none of the file headers match
 	// the struct, no matter what FailIfUnmatchedStructTags is set to
 	config.FailIfUnmatchedStructTags = false
 	um, err = config.NewUnmarshaller(csv.NewReader(strings.NewReader(disjointHeaders)))
-	if err == nil {
-		t.Fatalf("Expected error")
-	}
-	if um != nil {
-		t.Fatal("Expected no Unmarshaller")
-	}
+	require.Error(t, err, "Expected error")
+	require.Nil(t, um, "Expected no Unmarshaller")
 
 	config.FailIfUnmatchedStructTags = true
 	um, err = config.NewUnmarshaller(csv.NewReader(strings.NewReader(disjointHeaders)))
-	if err == nil {
-		t.Fatalf("Expected error")
-	}
-	if um != nil {
-		t.Fatal("Expected no Unmarshaller")
-	}
+	require.Error(t, err, "Expected error")
+	require.Nil(t, um, "Expected no Unmarshaller")
 }

@@ -68,7 +68,6 @@ func TestMarshaller_WriteAll(t *testing.T) {
 		{FieldA: "c", FieldB: "d"},
 		{FieldA: "A", FieldB: "B"}}
 
-
 	if err := m.WriteAll(s); err != nil {
 		t.Fatalf("Error calling WriteAll(): %#v", err)
 	}
