@@ -34,9 +34,9 @@ func (si *structInfo) headers() []string {
 // Each IndexChain element before the last is the index of an the embedded struct field
 // that defines Key as a tag
 type fieldInfo struct {
-	keys         []string
-	omitEmpty    bool
-	IndexChain   []int
+	keys       []string
+	omitEmpty  bool
+	IndexChain []int
 }
 
 func (f fieldInfo) getFirstKey() string {

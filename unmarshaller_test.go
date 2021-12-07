@@ -61,21 +61,20 @@ c,d,e
 }
 
 func Test_Read_ErrorLineNumbers(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 
 	um, err := NewUnmarshaller(sample{}, csv.NewReader(strings.NewReader(brokenCSV)))
 	if err != nil {
 		t.Fatalf("Failed to allocate Unmarshaller: %s", err.Error())
 	}
 
-
 	// Lines 4 & 5 have errors.
 
 	var rec interface{}
 	// Header is line 1
-	_, err = um.Read()			// line 2
-	_, err = um.Read()			// line 3
-	_, err = um.Read()			// line 4
+	_, err = um.Read() // line 2
+	_, err = um.Read() // line 3
+	_, err = um.Read() // line 4
 
 	// Line 5 has the first error
 	rec, err = um.Read()
@@ -90,7 +89,7 @@ func Test_Read_ErrorLineNumbers(t *testing.T) {
 }
 
 func Test_ReadAll(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 
 	ctx := context.Background()
 
@@ -158,7 +157,7 @@ func Test_ReadAll(t *testing.T) {
 }
 
 func Test_Unmarshaller_Allocation(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 
 	exactHeaders := `field_a,field_b`
 	overlappingHeaders := `field_b,field_c`
