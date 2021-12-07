@@ -36,7 +36,8 @@ func (c *Config) NewUnmarshaller(reader Reader) (*Unmarshaller, error) {
 	um := &Unmarshaller{
 		reader: reader,
 		config: vc,
-		line:   1,
+		// Start at L1 because reader.Read() was called for headers.
+		line: 1,
 	}
 
 	return um, nil
