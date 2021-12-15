@@ -72,8 +72,8 @@ func (m *Marshaller) WriteAll(values interface{}) error {
 		v = v.Elem()
 	}
 
-	if v.Type() != reflect.SliceOf(m.config.outType) {
-		return fmt.Errorf("Expected []%T, but got %T", m.config.outType, values)
+	if v.Kind() != reflect.Slice && reflect.TypeOf(v.Elem()) != m.config.outType {
+		return fmt.Errorf("Expected []%s, but got %T", m.config.outType, values)
 	}
 
 	n := v.Len()
