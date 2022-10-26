@@ -115,6 +115,30 @@ func Test_ReadAll_ErrorLineNumbers(t *testing.T) {
 	assert.Contains(t, err.Error(), "line 3", "Expected the error to mention line number")
 }
 
+func Test_ReadAll_ErrorWithID(t *testing.T) {
+	t.Parallel()
+
+	type sample2 struct {
+		A int     `csv:"a"`
+		B string  `csv:"b"`
+		C float64 `csv:"c"`
+	}
+
+	brokenCSV := `a,b,c
+1,a,1.5
+2,b,2.5-
+3,c,3.5
+`
+
+	ctx := context.Background()
+	um, err := NewUnmarshallerWithID(sample2{}, csv.NewReader(strings.NewReader(brokenCSV)), "a")
+	require.NoError(t, err, "Failed to allocate Unmarshaller")
+
+	_, err = um.ReadAll(ctx, StopOnError)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "ID 2", "Expected the error to ID of row")
+}
+
 func Test_ReadAll_LogErrorLineNumbers(t *testing.T) {
 	t.Parallel()
 

@@ -29,6 +29,10 @@ type Config struct {
 	// whether we should align duplicate CSV headers per their
 	// alignment in the struct definition.
 	ShouldAlignDuplicateHeadersWithStructFieldOrder bool
+
+	// idName indicates the column name of the ID of each row if the
+	// ID would like to be included in the unmarshalRow error message
+	idName string
 }
 
 // validate ensures that a struct was used to create the Unmarshaller, and validates
