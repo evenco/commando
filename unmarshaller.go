@@ -21,6 +21,12 @@ func NewUnmarshaller(holder interface{}, reader Reader) (*Unmarshaller, error) {
 	return (&Config{Holder: holder}).NewUnmarshaller(reader)
 }
 
+// NewUnmarshallerWithID is a convenience function which allocates and
+// returns a new Unmarshaller with an ID column name specified.
+func NewUnmarshallerWithID(holder interface{}, reader Reader, idName string) (*Unmarshaller, error) {
+	return (&Config{Holder: holder, idName: idName}).NewUnmarshaller(reader)
+}
+
 // NewUnmarshaller creates an unmarshaller from a Reader and a struct.
 func (c *Config) NewUnmarshaller(reader Reader) (*Unmarshaller, error) {
 	headers, err := reader.Read()
@@ -123,11 +129,20 @@ func (um *Unmarshaller) createNew() (reflect.Value, bool) {
 // tags.
 func (um *Unmarshaller) unmarshalRow(row []string) (interface{}, error) {
 	outValue, isPointer := um.createNew()
+	idColumn := um.config.idName
+	id := ""
 
 	for j, csvColumnContent := range row {
 		if j < len(um.config.fieldInfoMap) && um.config.fieldInfoMap[j] != nil {
+			if id == "" && idColumn != "" && um.config.headers[j] == idColumn {
+				id = csvColumnContent
+			}
+
 			fieldInfo := um.config.fieldInfoMap[j]
 			if err := setInnerField(&outValue, isPointer, fieldInfo.IndexChain, csvColumnContent, fieldInfo.omitEmpty); err != nil { // Set field of struct
+				if id != "" {
+					return nil, fmt.Errorf("ID %s - cannot assign field %q at index %v through index chain %v with ID : %v", id, um.config.headers[j], j, fieldInfo.IndexChain, err)
+				}
 				return nil, fmt.Errorf("cannot assign field %q at index %v through index chain %v: %v", um.config.headers[j], j, fieldInfo.IndexChain, err)
 			}
 		}
